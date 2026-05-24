@@ -53,7 +53,6 @@ const Sidebar = () => {
       </div>
 
       <nav className="space-y-2">
-
         {navItems.map((item) => (
           <button
             key={item.name}
@@ -85,53 +84,9 @@ const Sidebar = () => {
             <span className="font-medium">
               {item.name}
             </span>
-
           </button>
         ))}
-
       </nav>
-
-      <div className="mt-auto pt-6">
-        <div
-          className="
-            rounded-3xl
-            border border-white/10
-            bg-gradient-to-br
-            from-blue-500/10
-            to-purple-500/10
-            p-5
-          "
-        >
-          <h3 className="text-sm font-semibold text-white">
-            Upgrade to Pro
-          </h3>
-
-          <p className="text-sm text-slate-400 mt-2 leading-relaxed">
-            Unlock advanced analytics and budgeting tools.
-          </p>
-
-          <button
-            className="
-              mt-4
-              w-full
-              rounded-2xl
-              bg-white
-              text-black
-              py-3
-              text-sm
-              font-semibold
-              hover:scale-[1.02]
-              active:scale-[0.98]
-              transition-all
-              duration-300
-              cursor-pointer
-            "
-          >
-            Upgrade Plan
-          </button>
-        </div>
-      </div>
-
     </aside>
   );
 };

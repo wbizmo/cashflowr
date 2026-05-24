@@ -4,6 +4,9 @@
 @import "@fontsource-variable/inter";
 
 @custom-variant dark (&:is(.dark *));
+html {
+  scroll-behavior: smooth;
+}
 
 @theme inline {
     --font-heading: var(--font-sans);
@@ -160,4 +163,20 @@ textarea {
 
 * {
   -webkit-tap-highlight-color: transparent;
+}
+
+@keyframes cashflowr-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.cashflowr-loader {
+  width: 64px;
+  height: 64px;
+  border-radius: 9999px;
+  border: 3px solid rgba(255,255,255,0.08);
+  border-top-color: #3B82F6;
+  border-right-color: #8B5CF6;
+  animation: cashflowr-spin 0.8s linear infinite;
 }
