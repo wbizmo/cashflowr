@@ -3,6 +3,7 @@ import {
   X,
   LayoutDashboard,
   Receipt,
+  Tags,
   PieChart,
   Wallet,
   Settings,
@@ -14,6 +15,7 @@ import { useUI } from "../../context/UIContext";
 const navItems = [
   { name: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
   { name: "Transactions", icon: Receipt, path: "/transactions" },
+  { name: "Categories", icon: Tags, path: "/categories" },
   { name: "Analytics", icon: PieChart, path: "/analytics" },
   { name: "Budgets", icon: Wallet, path: "/budgets" },
   { name: "Notifications", icon: Bell, path: "/notifications" },

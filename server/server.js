@@ -3,7 +3,11 @@ import dotenv from "dotenv";
 import cors from "cors";
 
 import connectDB from "./config/db.js";
+
 import authRoutes from "./routes/authRoutes.js";
+import notificationRoutes from "./routes/notificationRoutes.js";
+import transactionRoutes from "./routes/transactionRoutes.js";
+import categoryRoutes from "./routes/categoryRoutes.js";
 
 dotenv.config();
 
@@ -19,10 +23,8 @@ app.use(
 );
 
 app.use(express.json());
-
 app.use(express.urlencoded({ extended: true }));
 
-// Health Check
 app.get("/", (req, res) => {
   res.json({
     success: true,
@@ -30,10 +32,11 @@ app.get("/", (req, res) => {
   });
 });
 
-// Routes
 app.use("/api/auth", authRoutes);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/transactions", transactionRoutes);
+app.use("/api/categories", categoryRoutes);
 
-// 404 Handler
 app.use((req, res) => {
   res.status(404).json({
     success: false,
@@ -44,7 +47,5 @@ app.use((req, res) => {
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
-  console.log(
-    `Server running on port ${PORT}`
-  );
+  console.log(`Server running on port ${PORT}`);
 });
