@@ -6,6 +6,8 @@ import App from "./App";
 import "./styles/globals.css";
 
 import { UIProvider } from "./context/UIContext";
+import { AuthProvider } from "./context/AuthContext";
+import { ThemeProvider } from "./context/ThemeContext";
 import AppPreloader from "./components/common/AppPreloader";
 
 const Root = () => {
@@ -19,15 +21,17 @@ const Root = () => {
     return () => clearTimeout(timer);
   }, []);
 
-  if (loading) {
-    return <AppPreloader />;
-  }
+  if (loading) return <AppPreloader />;
 
   return (
     <BrowserRouter>
-      <UIProvider>
-        <App />
-      </UIProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <UIProvider>
+            <App />
+          </UIProvider>
+        </AuthProvider>
+      </ThemeProvider>
     </BrowserRouter>
   );
 };
