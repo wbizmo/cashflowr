@@ -23,15 +23,18 @@ const Sidebar = () => {
   const location = useLocation();
 
   return (
-    <aside className="hidden lg:flex w-72 flex-col border-r border-white/10 bg-white/[0.03] backdrop-blur-xl p-6">
+    <aside className="hidden lg:flex fixed left-0 top-0 z-40 h-screen w-72 flex-col border-r border-white/10 bg-white/[0.03] backdrop-blur-xl p-6">
       <div className="mb-12">
         <h1 className="text-3xl font-bold text-white tracking-tight">
           Cash<span className="text-blue-500">Flowr</span>
         </h1>
-        <p className="text-sm text-slate-500 mt-2">Smart finance management</p>
+
+        <p className="text-sm text-slate-500 mt-2">
+          Smart finance management
+        </p>
       </div>
 
-      <nav className="space-y-2">
+      <nav className="space-y-2 overflow-y-auto pr-1">
         {navItems.map((item) => {
           const active = location.pathname === item.path;
 
@@ -49,6 +52,7 @@ const Sidebar = () => {
                 size={20}
                 className="transition-transform duration-300 group-hover:scale-110"
               />
+
               <span className="font-medium">{item.name}</span>
             </Link>
           );

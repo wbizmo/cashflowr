@@ -5,9 +5,12 @@ import cors from "cors";
 import connectDB from "./config/db.js";
 
 import authRoutes from "./routes/authRoutes.js";
+import userRoutes from "./routes/userRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
 import transactionRoutes from "./routes/transactionRoutes.js";
 import categoryRoutes from "./routes/categoryRoutes.js";
+import budgetRoutes from "./routes/budgetRoutes.js";
+import dashboardRoutes from "./routes/dashboardRoutes.js";
 
 dotenv.config();
 
@@ -25,6 +28,7 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Health Check
 app.get("/", (req, res) => {
   res.json({
     success: true,
@@ -32,11 +36,16 @@ app.get("/", (req, res) => {
   });
 });
 
+// API Routes
 app.use("/api/auth", authRoutes);
+app.use("/api/users", userRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/transactions", transactionRoutes);
 app.use("/api/categories", categoryRoutes);
+app.use("/api/budgets", budgetRoutes);
+app.use("/api/dashboard", dashboardRoutes);
 
+// 404 Handler
 app.use((req, res) => {
   res.status(404).json({
     success: false,

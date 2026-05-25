@@ -84,8 +84,8 @@ const Navbar = () => {
   }, []);
 
   return (
-    <header className="sticky top-0 z-30 h-20 border-b border-white/10 bg-[#070B14]/80 backdrop-blur-xl flex items-center justify-between px-4 md:px-6">
-      <div className="flex items-center gap-4">
+  <header className="sticky top-0 z-30 h-20 border-b border-white/10 bg-[#070B14]/80 backdrop-blur-xl flex items-center justify-between px-4 md:px-6">  
+    <div className="flex items-center gap-4">
         <button
           onClick={() => setMobileSidebarOpen(true)}
           className="lg:hidden h-11 w-11 rounded-xl border border-white/10 bg-white/[0.03] flex items-center justify-center cursor-pointer hover:scale-105 active:scale-95 transition-all duration-300"

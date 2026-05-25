@@ -1,14 +1,8 @@
 import { useEffect, useState } from "react";
-import {
-  Plus,
-  Trash2,
-  Pencil,
-  X,
-  Check,
-  Wallet,
-} from "lucide-react";
+import { Plus, Trash2, Pencil, X, Check, Wallet } from "lucide-react";
 
 import DashboardLayout from "../layouts/DashboardLayout";
+import ConfirmModal from "../components/common/ConfirmModal";
 import api from "../services/api";
 import {
   categoryIcons,
@@ -28,6 +22,8 @@ const Categories = () => {
   const [form, setForm] = useState(initialForm);
   const [editingId, setEditingId] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [errorModal, setErrorModal] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -35,8 +31,8 @@ const Categories = () => {
     try {
       const { data } = await api.get("/categories");
       setCategories(data.categories || []);
-    } catch (error) {
-      console.log("Failed to fetch categories", error);
+    } catch {
+      setErrorModal("Failed to fetch categories.");
     } finally {
       setLoading(false);
     }
@@ -95,24 +91,24 @@ const Categories = () => {
       await fetchCategories();
       closeModal();
     } catch (error) {
-      alert(error.response?.data?.message || "Failed to save category");
+      setErrorModal(error.response?.data?.message || "Failed to save category.");
     } finally {
       setSaving(false);
     }
   };
 
-  const deleteCategory = async (id) => {
-    const confirmDelete = confirm(
-      "Delete this category? Existing transactions may still reference it."
-    );
-
-    if (!confirmDelete) return;
+  const confirmDeleteCategory = async () => {
+    if (!deleteTarget) return;
 
     try {
-      await api.delete(`/categories/${id}`);
-      setCategories((prev) => prev.filter((item) => item._id !== id));
+      await api.delete(`/categories/${deleteTarget._id}`);
+      setCategories((prev) =>
+        prev.filter((item) => item._id !== deleteTarget._id)
+      );
+      setDeleteTarget(null);
     } catch (error) {
-      alert(error.response?.data?.message || "Failed to delete category");
+      setDeleteTarget(null);
+      setErrorModal(error.response?.data?.message || "Failed to delete category.");
     }
   };
 
@@ -131,16 +127,9 @@ const Categories = () => {
           <div className="flex items-center gap-4">
             <div
               className="h-14 w-14 rounded-2xl flex items-center justify-center"
-              style={{
-                backgroundColor: `${category.color}20`,
-              }}
+              style={{ backgroundColor: `${category.color}20` }}
             >
-              <Icon
-                size={22}
-                style={{
-                  color: category.color,
-                }}
-              />
+              <Icon size={22} style={{ color: category.color }} />
             </div>
 
             <div>
@@ -163,7 +152,7 @@ const Categories = () => {
             </button>
 
             <button
-              onClick={() => deleteCategory(category._id)}
+              onClick={() => setDeleteTarget(category)}
               className="h-10 w-10 rounded-xl border border-white/10 bg-white/[0.03] flex items-center justify-center hover:bg-red-500/10 cursor-pointer"
             >
               <Trash2 size={16} className="text-red-400" />
@@ -254,7 +243,7 @@ const Categories = () => {
       </div>
 
       {modalOpen && (
-        <div className="fixed inset-0 z-[999] flex items-center justify-center px-4">
+        <div className="fixed inset-0 z-[999] flex items-center justify-center px-4 py-6">
           <div
             onClick={closeModal}
             className="absolute inset-0 bg-black/70 backdrop-blur-md"
@@ -262,25 +251,27 @@ const Categories = () => {
 
           <form
             onSubmit={saveCategory}
-            className="relative w-full max-w-xl rounded-[32px] border border-white/10 bg-[#0B1120] p-6 md:p-8 shadow-2xl"
+            className="relative w-full max-w-xl max-h-[90vh] rounded-[32px] border border-white/10 bg-[#0B1120] shadow-2xl overflow-hidden flex flex-col"
           >
-            <button
-              type="button"
-              onClick={closeModal}
-              className="absolute right-5 top-5 h-10 w-10 rounded-xl border border-white/10 bg-white/[0.03] flex items-center justify-center cursor-pointer"
-            >
-              <X size={18} className="text-white" />
-            </button>
+            <div className="shrink-0 p-6 md:p-8 border-b border-white/10">
+              <button
+                type="button"
+                onClick={closeModal}
+                className="absolute right-5 top-5 h-10 w-10 rounded-xl border border-white/10 bg-white/[0.03] flex items-center justify-center cursor-pointer hover:bg-white/[0.06]"
+              >
+                <X size={18} className="text-white" />
+              </button>
 
-            <h2 className="text-3xl font-bold text-white">
-              {editingId ? "Edit Category" : "New Category"}
-            </h2>
+              <h2 className="text-3xl font-bold text-white pr-12">
+                {editingId ? "Edit Category" : "New Category"}
+              </h2>
 
-            <p className="text-slate-400 mt-2">
-              Choose how this category appears across your dashboard.
-            </p>
+              <p className="text-slate-400 mt-2">
+                Choose how this category appears across your dashboard.
+              </p>
+            </div>
 
-            <div className="mt-8 space-y-5">
+            <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-5">
               <div>
                 <label className="text-sm text-slate-300">Category name</label>
                 <input
@@ -289,7 +280,7 @@ const Categories = () => {
                   onChange={handleChange}
                   required
                   placeholder="e.g. Food, Salary, Transport"
-                  className="mt-2 w-full h-13 rounded-2xl border border-white/10 bg-white/[0.03] px-4 outline-none text-white placeholder:text-slate-600"
+                  className="mt-2 form-input"
                 />
               </div>
 
@@ -299,7 +290,7 @@ const Categories = () => {
                   name="type"
                   value={form.type}
                   onChange={handleChange}
-                  className="mt-2 w-full h-13 rounded-2xl border border-white/10 bg-white/[0.03] px-4 outline-none text-white"
+                  className="mt-2 form-input select-dark"
                 >
                   <option value="expense">Expense</option>
                   <option value="income">Income</option>
@@ -308,6 +299,7 @@ const Categories = () => {
 
               <div>
                 <label className="text-sm text-slate-300">Icon</label>
+
                 <div className="mt-3 grid grid-cols-4 sm:grid-cols-6 gap-3">
                   {iconOptions.map((iconName) => {
                     const Icon = categoryIcons[iconName] || Wallet;
@@ -338,6 +330,7 @@ const Categories = () => {
 
               <div>
                 <label className="text-sm text-slate-300">Color</label>
+
                 <div className="mt-3 flex flex-wrap gap-3">
                   {colorOptions.map((color) => (
                     <button
@@ -354,9 +347,7 @@ const Categories = () => {
                           ? "border-white"
                           : "border-transparent"
                       }`}
-                      style={{
-                        backgroundColor: color,
-                      }}
+                      style={{ backgroundColor: color }}
                     >
                       {form.color === color && (
                         <Check size={16} className="text-white" />
@@ -365,7 +356,9 @@ const Categories = () => {
                   ))}
                 </div>
               </div>
+            </div>
 
+            <div className="shrink-0 p-6 md:p-8 border-t border-white/10 bg-[#0B1120]">
               <button
                 disabled={saving}
                 className="w-full h-13 rounded-2xl bg-white text-black font-semibold hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer disabled:opacity-60"
@@ -380,6 +373,25 @@ const Categories = () => {
           </form>
         </div>
       )}
+
+      <ConfirmModal
+        open={Boolean(deleteTarget)}
+        title="Delete category?"
+        message={`This will remove "${deleteTarget?.name}" from your categories. Existing transactions may still keep their saved category reference.`}
+        confirmText="Delete"
+        danger
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={confirmDeleteCategory}
+      />
+
+      <ConfirmModal
+        open={Boolean(errorModal)}
+        title="Something went wrong"
+        message={errorModal || ""}
+        confirmText="Close"
+        onClose={() => setErrorModal(null)}
+        onConfirm={() => setErrorModal(null)}
+      />
     </DashboardLayout>
   );
 };
