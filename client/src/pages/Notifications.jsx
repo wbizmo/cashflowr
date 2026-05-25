@@ -2,38 +2,36 @@ import { useEffect, useState } from "react";
 import {
   Bell,
   CheckCheck,
-  ShieldCheck,
-  TrendingUp,
-  Receipt,
+  Circle,
   Wallet,
-  CalendarDays,
+  RefreshCw,
 } from "lucide-react";
 
 import DashboardLayout from "../layouts/DashboardLayout";
+import ConfirmModal from "../components/common/ConfirmModal";
 import api from "../services/api";
-
-const getNotificationIcon = (type) => {
-  if (type === "login" || type === "security") return ShieldCheck;
-  if (type === "spending_insight") return TrendingUp;
-  if (type === "transaction_created") return Receipt;
-  if (type === "budget_alert") return Wallet;
-  if (type === "monthly_summary") return CalendarDays;
-
-  return Bell;
-};
+import { useAuth } from "../context/AuthContext";
+import { formatMoney } from "../utils/formatCurrency";
 
 const Notifications = () => {
+  const { user } = useAuth();
+  const currency = user?.currency || "USD";
+
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  const unreadCount = notifications.filter((item) => !item.read).length;
+  const [errorModal, setErrorModal] = useState(null);
 
   const fetchNotifications = async () => {
     try {
+      setLoading(true);
+
       const { data } = await api.get("/notifications");
+
       setNotifications(data.notifications || []);
     } catch (error) {
-      console.log("Failed to fetch notifications", error);
+      setErrorModal(
+        error.response?.data?.message || "Failed to load notifications."
+      );
     } finally {
       setLoading(false);
     }
@@ -44,32 +42,15 @@ const Notifications = () => {
       await api.patch("/notifications/mark-all-read");
 
       setNotifications((prev) =>
-        prev.map((item) => ({
-          ...item,
+        prev.map((notification) => ({
+          ...notification,
           read: true,
         }))
       );
     } catch (error) {
-      console.log("Failed to mark notifications as read", error);
-    }
-  };
-
-  const markOneAsRead = async (id) => {
-    try {
-      await api.patch(`/notifications/${id}/read`);
-
-      setNotifications((prev) =>
-        prev.map((item) =>
-          item._id === id
-            ? {
-                ...item,
-                read: true,
-              }
-            : item
-        )
+      setErrorModal(
+        error.response?.data?.message || "Failed to mark notifications as read."
       );
-    } catch (error) {
-      console.log("Failed to mark notification as read", error);
     }
   };
 
@@ -77,78 +58,81 @@ const Notifications = () => {
     fetchNotifications();
   }, []);
 
+  const unreadCount = notifications.filter((item) => !item.read).length;
+
+  const formatDate = (date) => {
+    return new Date(date).toLocaleString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-8">
         <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-6">
           <div>
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/10 bg-white/[0.03] text-sm text-slate-300 mb-5">
-              <Bell size={16} className="text-blue-400" />
-              Notification Center
-            </div>
-
             <h1 className="text-4xl md:text-5xl font-bold text-white">
               Notifications
             </h1>
 
-            <p className="text-slate-400 mt-3 max-w-2xl">
-              Track account activity, spending alerts, budget updates, and
-              financial insights generated from your CashFlowr workspace.
+            <p className="text-slate-400 mt-3">
+              Track account activity, finance updates, and CashFlowr insights.
             </p>
           </div>
 
-          <button
-            onClick={markAllAsRead}
-            disabled={unreadCount === 0}
-            className="h-12 px-5 rounded-2xl border border-white/10 bg-white/[0.03] flex items-center justify-center gap-2 text-white hover:bg-white/[0.06] disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
-          >
-            <CheckCheck size={18} />
-            Mark all as read
-          </button>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <button
+              onClick={fetchNotifications}
+              className="h-12 px-5 rounded-2xl border border-white/10 bg-white/[0.03] text-white flex items-center justify-center gap-2 hover:bg-white/[0.06] cursor-pointer"
+            >
+              <RefreshCw size={18} />
+              Refresh
+            </button>
+
+            <button
+              onClick={markAllAsRead}
+              className="h-12 px-5 rounded-2xl bg-white text-black font-semibold flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
+            >
+              <CheckCheck size={18} />
+              Mark all read
+            </button>
+          </div>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-5">
-          <div className="rounded-[28px] border border-white/10 bg-white/[0.03] backdrop-blur-xl p-6">
-            <p className="text-slate-400 text-sm">Total notifications</p>
-            <h3 className="text-3xl font-bold text-white mt-3">
-              {notifications.length}
-            </h3>
-          </div>
-
-          <div className="rounded-[28px] border border-white/10 bg-white/[0.03] backdrop-blur-xl p-6">
-            <p className="text-slate-400 text-sm">Unread updates</p>
-            <h3 className="text-3xl font-bold text-white mt-3">
-              {unreadCount}
-            </h3>
-          </div>
-
-          <div className="rounded-[28px] border border-white/10 bg-white/[0.03] backdrop-blur-xl p-6">
-            <p className="text-slate-400 text-sm">Status</p>
-            <h3 className="text-3xl font-bold text-white mt-3">
-              {unreadCount > 0 ? "Action needed" : "All clear"}
-            </h3>
-          </div>
+        <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-5">
+          <SummaryCard title="Total Notifications" value={notifications.length} />
+          <SummaryCard title="Unread" value={unreadCount} />
+          <SummaryCard
+            title="Read"
+            value={notifications.length - unreadCount}
+          />
         </div>
 
         <div className="rounded-[32px] border border-white/10 bg-white/[0.03] backdrop-blur-xl overflow-hidden">
           <div className="p-6 border-b border-white/10 flex items-center justify-between">
             <div>
               <h2 className="text-xl font-semibold text-white">
-                Recent activity
+                Notification Center
               </h2>
 
-              <p className="text-sm text-slate-500 mt-1">
-                Finance alerts and account notifications appear here.
+              <p className="text-slate-400 text-sm mt-1">
+                Latest updates from your financial workspace.
               </p>
             </div>
+
+            <Bell className="text-blue-400" size={24} />
           </div>
 
           {loading ? (
-            <div className="p-8 space-y-4">
+            <div className="p-6 space-y-4">
               {[1, 2, 3].map((item) => (
                 <div
                   key={item}
-                  className="h-24 rounded-3xl bg-white/[0.03] border border-white/5 animate-pulse"
+                  className="h-24 rounded-3xl border border-white/10 bg-white/[0.03] animate-pulse"
                 />
               ))}
             </div>
@@ -162,73 +146,107 @@ const Notifications = () => {
                 No notifications yet
               </h3>
 
-              <p className="text-slate-400 mt-3 max-w-md mx-auto leading-relaxed">
-                Login alerts, transaction updates, budget warnings, and
-                spending insights will appear here once your account activity
-                begins.
+              <p className="text-slate-400 mt-3">
+                Activity alerts and financial insights will appear here.
               </p>
             </div>
           ) : (
-            <div>
+            <div className="divide-y divide-white/5">
               {notifications.map((notification) => {
-                const Icon = getNotificationIcon(notification.type);
+                const amount = notification.metadata?.amount;
+                const transactionType =
+                  notification.metadata?.transactionType ||
+                  notification.metadata?.type;
 
                 return (
-                  <button
+                  <div
                     key={notification._id}
-                    onClick={() => markOneAsRead(notification._id)}
-                    className={`w-full text-left p-6 border-b border-white/5 transition-all cursor-pointer hover:bg-white/[0.03] ${
+                    className={`p-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5 ${
                       notification.read ? "bg-transparent" : "bg-blue-500/5"
                     }`}
                   >
-                    <div className="flex gap-4">
-                      <div
-                        className={`h-12 w-12 rounded-2xl flex items-center justify-center shrink-0 ${
-                          notification.read
-                            ? "bg-white/[0.03]"
-                            : "bg-blue-500/10"
-                        }`}
-                      >
-                        <Icon
-                          size={19}
-                          className={
-                            notification.read
-                              ? "text-slate-400"
-                              : "text-blue-400"
-                          }
-                        />
+                    <div className="flex items-start gap-4">
+                      <div className="h-12 w-12 rounded-2xl bg-blue-500/10 flex items-center justify-center shrink-0">
+                        {notification.read ? (
+                          <Bell className="text-blue-400" size={20} />
+                        ) : (
+                          <Circle className="text-blue-400 fill-blue-400" size={16} />
+                        )}
                       </div>
 
-                      <div className="flex-1 min-w-0">
-                        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
                           <h3 className="text-white font-semibold">
                             {notification.title}
                           </h3>
 
                           {!notification.read && (
-                            <span className="w-fit rounded-full bg-blue-500/10 text-blue-400 text-xs px-3 py-1">
+                            <span className="text-[11px] px-2 py-1 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">
                               New
                             </span>
                           )}
                         </div>
 
-                        <p className="text-slate-400 mt-2 leading-relaxed">
+                        <p className="text-slate-400 mt-1 leading-relaxed">
                           {notification.message}
                         </p>
 
+                        {amount !== undefined && amount !== null && (
+                          <div className="mt-3 inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                            <Wallet
+                              size={16}
+                              className={
+                                transactionType === "income"
+                                  ? "text-emerald-400"
+                                  : "text-red-400"
+                              }
+                            />
+
+                            <span
+                              className={`font-semibold ${
+                                transactionType === "income"
+                                  ? "text-emerald-400"
+                                  : "text-red-400"
+                              }`}
+                            >
+                              {transactionType === "income" ? "+" : "-"}
+                              {formatMoney(amount, currency)}
+                            </span>
+                          </div>
+                        )}
+
                         <p className="text-slate-600 text-xs mt-3">
-                          {new Date(notification.createdAt).toLocaleString()}
+                          {formatDate(notification.createdAt)}
                         </p>
                       </div>
                     </div>
-                  </button>
+                  </div>
                 );
               })}
             </div>
           )}
         </div>
       </div>
+
+      <ConfirmModal
+        open={Boolean(errorModal)}
+        title="Something went wrong"
+        message={errorModal || ""}
+        confirmText="Close"
+        onClose={() => setErrorModal(null)}
+        onConfirm={() => setErrorModal(null)}
+      />
     </DashboardLayout>
+  );
+};
+
+const SummaryCard = ({ title, value }) => {
+  return (
+    <div className="rounded-[28px] border border-white/10 bg-white/[0.03] backdrop-blur-xl p-6">
+      <p className="text-slate-400 text-sm">{title}</p>
+
+      <h3 className="text-3xl font-bold text-white mt-3">{value}</h3>
+    </div>
   );
 };
 

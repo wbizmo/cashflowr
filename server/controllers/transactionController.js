@@ -39,9 +39,14 @@ export const createTransaction = async (req, res) => {
       user: req.user._id,
       type: "transaction_created",
       title: "Transaction added",
-      message: `You added a new ${type}: ${title} - $${amount}.`,
+      message: `You added a new ${type}: ${title}.`,
       metadata: {
         transactionId: transaction._id,
+        amount,
+        currency: req.user.currency || "USD",
+        transactionType: type,
+        categoryId: selectedCategory._id,
+        categoryName: selectedCategory.name,
       },
     });
 

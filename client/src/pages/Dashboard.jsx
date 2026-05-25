@@ -19,29 +19,19 @@ import {
 import DashboardLayout from "../layouts/DashboardLayout";
 import useDashboardSummary from "../hooks/useDashboardSummary";
 import { categoryIcons } from "../utils/categoryOptions";
+import { formatMoney } from "../utils/formatCurrency";
+import { useAuth } from "../context/AuthContext";
 
 const Dashboard = () => {
   const { summary, loading } = useDashboardSummary();
+  const { user } = useAuth();
 
-  const formatMoney = (value = 0) =>
-    new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(value);
+  const currency = user?.currency || "USD";
 
   const chartData = [
-    {
-      name: "Income",
-      value: summary?.totalIncome || 0,
-    },
-    {
-      name: "Expenses",
-      value: summary?.totalExpenses || 0,
-    },
-    {
-      name: "Balance",
-      value: summary?.balance || 0,
-    },
+    { name: "Income", value: summary?.totalIncome || 0 },
+    { name: "Expenses", value: summary?.totalExpenses || 0 },
+    { name: "Balance", value: summary?.balance || 0 },
   ];
 
   const pieData =
@@ -60,6 +50,7 @@ const Dashboard = () => {
           <h1 className="text-4xl md:text-5xl font-bold text-white">
             Welcome back 👋
           </h1>
+
           <p className="text-slate-400 mt-3">
             Here is your real-time financial overview.
           </p>
@@ -79,22 +70,25 @@ const Dashboard = () => {
             <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-5">
               <StatCard
                 title="Current Balance"
-                value={formatMoney(summary?.balance)}
+                value={formatMoney(summary?.balance, currency)}
                 icon={Wallet}
                 tone="blue"
               />
+
               <StatCard
                 title="Total Income"
-                value={formatMoney(summary?.totalIncome)}
+                value={formatMoney(summary?.totalIncome, currency)}
                 icon={TrendingUp}
                 tone="green"
               />
+
               <StatCard
                 title="Total Expenses"
-                value={formatMoney(summary?.totalExpenses)}
+                value={formatMoney(summary?.totalExpenses, currency)}
                 icon={TrendingDown}
                 tone="red"
               />
+
               <StatCard
                 title="Savings Rate"
                 value={`${summary?.savingsRate || 0}%`}
@@ -108,6 +102,7 @@ const Dashboard = () => {
                 <h2 className="text-xl font-semibold text-white">
                   Financial Flow
                 </h2>
+
                 <p className="text-slate-400 text-sm mt-1">
                   Income, expenses, and balance overview.
                 </p>
@@ -115,7 +110,10 @@ const Dashboard = () => {
                 <div className="h-80 mt-8">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={chartData}>
-                      <Tooltip />
+                      <Tooltip
+                        formatter={(value) => formatMoney(value, currency)}
+                      />
+
                       <Area
                         type="monotone"
                         dataKey="value"
@@ -132,6 +130,7 @@ const Dashboard = () => {
                 <h2 className="text-xl font-semibold text-white">
                   Expense Split
                 </h2>
+
                 <p className="text-slate-400 text-sm mt-1">
                   Spending by category.
                 </p>
@@ -156,7 +155,10 @@ const Dashboard = () => {
                             <Cell key={index} fill={entry.color} />
                           ))}
                         </Pie>
-                        <Tooltip />
+
+                        <Tooltip
+                          formatter={(value) => formatMoney(value, currency)}
+                        />
                       </PieChart>
                     </ResponsiveContainer>
                   )}
@@ -205,6 +207,7 @@ const Dashboard = () => {
                               <p className="text-white font-medium">
                                 {transaction.title}
                               </p>
+
                               <p className="text-slate-400 text-sm">
                                 {transaction.category?.name || "Uncategorized"}
                               </p>
@@ -219,7 +222,7 @@ const Dashboard = () => {
                             }`}
                           >
                             {transaction.type === "income" ? "+" : "-"}
-                            {formatMoney(transaction.amount)}
+                            {formatMoney(transaction.amount, currency)}
                           </p>
                         </div>
                       );
@@ -243,8 +246,10 @@ const Dashboard = () => {
                           <p className="text-white font-medium">
                             {budget.category?.name}
                           </p>
+
                           <p className="text-slate-400 text-sm">
-                            {formatMoney(budget.amount)}
+                            {formatMoney(budget.spent || 0, currency)} /{" "}
+                            {formatMoney(budget.amount || 0, currency)}
                           </p>
                         </div>
 
@@ -256,6 +261,10 @@ const Dashboard = () => {
                             }}
                           />
                         </div>
+
+                        <p className="text-slate-500 text-xs mt-2">
+                          {formatMoney(budget.remaining || 0, currency)} left
+                        </p>
                       </div>
                     ))
                   )}
@@ -292,6 +301,7 @@ const StatCard = ({ title, value, icon: Icon, tone }) => {
       </div>
 
       <p className="text-slate-400 text-sm mt-5">{title}</p>
+
       <h3 className="text-3xl font-bold text-white mt-2">{value}</h3>
     </motion.div>
   );

@@ -14,6 +14,8 @@ import DashboardLayout from "../layouts/DashboardLayout";
 import ConfirmModal from "../components/common/ConfirmModal";
 import useTransactions from "../hooks/useTransactions";
 import { categoryIcons } from "../utils/categoryOptions";
+import { formatMoney } from "../utils/formatCurrency";
+import { useAuth } from "../context/AuthContext";
 
 const initialForm = {
   title: "",
@@ -33,6 +35,9 @@ const Transactions = () => {
     updateTransaction,
     deleteTransaction,
   } = useTransactions();
+
+  const { user } = useAuth();
+  const currency = user?.currency || "USD";
 
   const [form, setForm] = useState(initialForm);
   const [modalOpen, setModalOpen] = useState(false);
@@ -157,13 +162,6 @@ const Transactions = () => {
     }
   };
 
-  const formatMoney = (value) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(value);
-  };
-
   return (
     <DashboardLayout>
       <div className="space-y-8">
@@ -190,21 +188,21 @@ const Transactions = () => {
         <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-5">
           <SummaryCard
             title="Total Income"
-            value={formatMoney(totals.income)}
+            value={formatMoney(totals.income, currency)}
             icon={ArrowUpCircle}
             tone="green"
           />
 
           <SummaryCard
             title="Total Expenses"
-            value={formatMoney(totals.expenses)}
+            value={formatMoney(totals.expenses, currency)}
             icon={ArrowDownCircle}
             tone="red"
           />
 
           <SummaryCard
             title="Net Balance"
-            value={formatMoney(totals.balance)}
+            value={formatMoney(totals.balance, currency)}
             icon={Wallet}
             tone="blue"
           />
@@ -313,7 +311,7 @@ const Transactions = () => {
                         }`}
                       >
                         {transaction.type === "income" ? "+" : "-"}
-                        {formatMoney(transaction.amount)}
+                        {formatMoney(transaction.amount, currency)}
                       </p>
 
                       <div className="flex items-center gap-2">

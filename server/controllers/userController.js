@@ -4,7 +4,7 @@ export const updateUserSettings = async (req, res) => {
   try {
     const { firstName, lastName, currency, avatar } = req.body;
 
-    const allowedCurrencies = ["USD", "EUR", "GBP", "NGN", "CAD", "AUD"];
+    const allowedCurrencies = ["USD", "GBP", "EUR", "NGN"];
 
     if (currency && !allowedCurrencies.includes(currency)) {
       return res.status(400).json({

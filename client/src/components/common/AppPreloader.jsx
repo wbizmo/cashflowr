@@ -1,13 +1,17 @@
-const AppPreloader = () => {
-  return (
-    <div className="fixed inset-0 z-[9999] bg-[#070B14] flex items-center justify-center">
-      <div className="flex flex-col items-center gap-5">
-        <div className="cashflowr-loader" />
+import { useTheme } from "../../context/ThemeContext";
 
-        <p className="text-slate-400 text-sm tracking-wide">
-          Loading CashFlowr
-        </p>
-      </div>
+const AppPreloader = () => {
+  const { theme } = useTheme();
+
+  return (
+    <div
+      className={`fixed inset-0 z-[9999] flex items-center justify-center transition-colors duration-300 ${
+        theme === "light"
+          ? "bg-slate-50"
+          : "bg-[#070B14]"
+      }`}
+    >
+      <div className="cashflowr-loader" />
     </div>
   );
 };

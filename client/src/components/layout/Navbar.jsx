@@ -7,6 +7,7 @@ import {
   CheckCheck,
   Sun,
   Moon,
+  Wallet,
 } from "lucide-react";
 
 import { Link, useNavigate } from "react-router-dom";
@@ -16,12 +17,15 @@ import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
 
 import api from "../../services/api";
+import { formatMoney } from "../../utils/formatCurrency";
 
 const Navbar = () => {
   const { setMobileSidebarOpen } = useUI();
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
+
+  const currency = user?.currency || "USD";
 
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
@@ -84,8 +88,8 @@ const Navbar = () => {
   }, []);
 
   return (
-  <header className="sticky top-0 z-30 h-20 border-b border-white/10 bg-[#070B14]/80 backdrop-blur-xl flex items-center justify-between px-4 md:px-6">  
-    <div className="flex items-center gap-4">
+    <header className="sticky top-0 z-30 h-20 border-b border-white/10 bg-[#070B14]/80 backdrop-blur-xl flex items-center justify-between px-4 md:px-6">
+      <div className="flex items-center gap-4">
         <button
           onClick={() => setMobileSidebarOpen(true)}
           className="lg:hidden h-11 w-11 rounded-xl border border-white/10 bg-white/[0.03] flex items-center justify-center cursor-pointer hover:scale-105 active:scale-95 transition-all duration-300"
@@ -139,7 +143,7 @@ const Navbar = () => {
         </button>
 
         {notificationsOpen && (
-          <div className="absolute right-0 top-14 w-[340px] max-w-[calc(100vw-2rem)] rounded-3xl border border-white/10 bg-[#0B1120] shadow-2xl overflow-hidden">
+          <div className="absolute right-0 top-14 w-[360px] max-w-[calc(100vw-2rem)] rounded-3xl border border-white/10 bg-[#0B1120] shadow-2xl overflow-hidden">
             <div className="p-5 border-b border-white/10 flex items-center justify-between">
               <div>
                 <h3 className="text-white font-semibold">Notifications</h3>
@@ -167,26 +171,65 @@ const Navbar = () => {
                   No notifications yet.
                 </div>
               ) : (
-                notifications.slice(0, 5).map((notification) => (
-                  <div
-                    key={notification._id}
-                    className={`p-5 border-b border-white/5 ${
-                      notification.read ? "bg-transparent" : "bg-blue-500/5"
-                    }`}
-                  >
-                    <p className="text-white text-sm font-medium">
-                      {notification.title}
-                    </p>
+                notifications.slice(0, 5).map((notification) => {
+                  const amount = notification.metadata?.amount;
+                  const transactionType =
+                    notification.metadata?.transactionType ||
+                    notification.metadata?.type;
 
-                    <p className="text-slate-400 text-sm mt-1 leading-relaxed">
-                      {notification.message}
-                    </p>
+                  return (
+                    <div
+                      key={notification._id}
+                      className={`p-5 border-b border-white/5 ${
+                        notification.read ? "bg-transparent" : "bg-blue-500/5"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-white text-sm font-medium">
+                            {notification.title}
+                          </p>
 
-                    <p className="text-slate-600 text-xs mt-3">
-                      {new Date(notification.createdAt).toLocaleString()}
-                    </p>
-                  </div>
-                ))
+                          <p className="text-slate-400 text-sm mt-1 leading-relaxed">
+                            {notification.message}
+                          </p>
+                        </div>
+
+                        {!notification.read && (
+                          <span className="mt-1 h-2.5 w-2.5 rounded-full bg-blue-400 shrink-0" />
+                        )}
+                      </div>
+
+                      {amount !== undefined && amount !== null && (
+                        <div className="mt-3 inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                          <Wallet
+                            size={15}
+                            className={
+                              transactionType === "income"
+                                ? "text-emerald-400"
+                                : "text-red-400"
+                            }
+                          />
+
+                          <span
+                            className={`text-xs font-semibold ${
+                              transactionType === "income"
+                                ? "text-emerald-400"
+                                : "text-red-400"
+                            }`}
+                          >
+                            {transactionType === "income" ? "+" : "-"}
+                            {formatMoney(amount, currency)}
+                          </span>
+                        </div>
+                      )}
+
+                      <p className="text-slate-600 text-xs mt-3">
+                        {new Date(notification.createdAt).toLocaleString()}
+                      </p>
+                    </div>
+                  );
+                })
               )}
             </div>
 

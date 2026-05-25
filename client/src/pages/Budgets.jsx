@@ -5,6 +5,8 @@ import DashboardLayout from "../layouts/DashboardLayout";
 import ConfirmModal from "../components/common/ConfirmModal";
 import useBudgets from "../hooks/useBudgets";
 import { categoryIcons } from "../utils/categoryOptions";
+import { formatMoney } from "../utils/formatCurrency";
+import { useAuth } from "../context/AuthContext";
 
 const initialForm = {
   category: "",
@@ -40,6 +42,9 @@ const Budgets = () => {
     deleteBudget,
   } = useBudgets();
 
+  const { user } = useAuth();
+  const currency = user?.currency || "USD";
+
   const [form, setForm] = useState(initialForm);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -56,23 +61,16 @@ const Budgets = () => {
       limit,
       spent,
       remaining,
-      percentage: limit > 0 ? Math.min(Math.round((spent / limit) * 100), 100) : 0,
+      percentage:
+        limit > 0 ? Math.min(Math.round((spent / limit) * 100), 100) : 0,
     };
   }, [budgets]);
 
   const availableCategories = categories.filter((category) => {
     if (editingId) return true;
 
-    return !budgets.some(
-      (budget) => budget.category?._id === category._id
-    );
+    return !budgets.some((budget) => budget.category?._id === category._id);
   });
-
-  const formatMoney = (value = 0) =>
-    new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(value);
 
   const openCreateModal = () => {
     setEditingId(null);
@@ -166,9 +164,7 @@ const Budgets = () => {
 
         <div className="rounded-[32px] border border-white/10 bg-white/[0.03] backdrop-blur-xl p-5 flex flex-col lg:flex-row gap-4 lg:items-center lg:justify-between">
           <div>
-            <h2 className="text-white text-xl font-semibold">
-              Budget Period
-            </h2>
+            <h2 className="text-white text-xl font-semibold">Budget Period</h2>
             <p className="text-slate-400 text-sm mt-1">
               View and manage budgets for a specific month.
             </p>
@@ -197,9 +193,18 @@ const Budgets = () => {
         </div>
 
         <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-5">
-          <SummaryCard title="Budget Limit" value={formatMoney(totals.limit)} />
-          <SummaryCard title="Spent" value={formatMoney(totals.spent)} />
-          <SummaryCard title="Remaining" value={formatMoney(totals.remaining)} />
+          <SummaryCard
+            title="Budget Limit"
+            value={formatMoney(totals.limit, currency)}
+          />
+          <SummaryCard
+            title="Spent"
+            value={formatMoney(totals.spent, currency)}
+          />
+          <SummaryCard
+            title="Remaining"
+            value={formatMoney(totals.remaining, currency)}
+          />
           <SummaryCard title="Usage" value={`${totals.percentage}%`} />
         </div>
 
@@ -241,7 +246,9 @@ const Budgets = () => {
                       <div
                         className="h-14 w-14 rounded-2xl flex items-center justify-center"
                         style={{
-                          backgroundColor: `${budget.category?.color || "#3B82F6"}20`,
+                          backgroundColor: `${
+                            budget.category?.color || "#3B82F6"
+                          }20`,
                         }}
                       >
                         <Icon
@@ -258,8 +265,8 @@ const Budgets = () => {
                         </h3>
 
                         <p className="text-slate-400 text-sm mt-1">
-                          {formatMoney(budget.spent || 0)} spent of{" "}
-                          {formatMoney(budget.amount)}
+                          {formatMoney(budget.spent || 0, currency)} spent of{" "}
+                          {formatMoney(budget.amount, currency)}
                         </p>
                       </div>
                     </div>
@@ -287,7 +294,7 @@ const Budgets = () => {
                         {budget.percentage || 0}% used
                       </span>
                       <span className="text-slate-400">
-                        {formatMoney(budget.remaining || 0)} left
+                        {formatMoney(budget.remaining || 0, currency)} left
                       </span>
                     </div>
 
@@ -352,7 +359,10 @@ const Budgets = () => {
 
             <div className="mt-8 space-y-5">
               <div>
-                <label className="text-sm text-slate-300">Expense category</label>
+                <label className="text-sm text-slate-300">
+                  Expense category
+                </label>
+
                 <select
                   name="category"
                   value={form.category}
@@ -372,6 +382,7 @@ const Budgets = () => {
 
               <div>
                 <label className="text-sm text-slate-300">Monthly limit</label>
+
                 <input
                   name="amount"
                   type="number"

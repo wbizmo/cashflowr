@@ -168,10 +168,19 @@ textarea {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Loader Animation */
+
 @keyframes cashflowr-spin {
   to {
     transform: rotate(360deg);
   }
+}
+
+/* Theme-aware App Preloader */
+
+.cashflowr-preloader {
+  background: #070b14;
+  color: #ffffff;
 }
 
 .cashflowr-loader {
@@ -192,6 +201,19 @@ html.light,
 html.light body {
   background: #f8fafc;
   color: #0f172a;
+}
+
+/* Theme-aware preloader in light mode */
+
+html.light .cashflowr-preloader {
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+html.light .cashflowr-loader {
+  border-color: rgba(15, 23, 42, 0.1);
+  border-top-color: #3B82F6;
+  border-right-color: #8B5CF6;
 }
 
 /* Main dark backgrounds */
@@ -306,13 +328,6 @@ html.light .shadow-2xl {
   box-shadow: 0 20px 60px rgba(15, 23, 42, 0.12) !important;
 }
 
-/* Loader border in light mode */
-html.light .cashflowr-loader {
-  border-color: rgba(15, 23, 42, 0.1);
-  border-top-color: #3B82F6;
-  border-right-color: #8B5CF6;
-}
-
 /* Smooth theme transitions */
 html,
 body,
@@ -333,12 +348,14 @@ textarea {
     transform 0.25s ease;
 }
 
+/* Form Inputs */
+
 .form-input {
   width: 100%;
   height: 3.25rem;
   border-radius: 1rem;
-  border: 1px solid rgba(255,255,255,0.1);
-  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
   padding: 0 1rem;
   outline: none;
   color: white;
@@ -353,6 +370,8 @@ html.light .form-input {
   border-color: rgba(15, 23, 42, 0.1);
   color: #0f172a;
 }
+
+/* Select Dropdowns */
 
 select.form-input,
 select.select-dark {
@@ -377,4 +396,3 @@ html.light select.select-dark option {
   background-color: #ffffff;
   color: #0f172a;
 }
-
