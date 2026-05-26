@@ -17,7 +17,9 @@ export const AuthProvider = ({ children }) => {
       }
 
       const { data } = await api.get("/auth/me");
+
       setUser(data.user);
+      localStorage.setItem("cashflowr_user", JSON.stringify(data.user));
     } catch (error) {
       localStorage.removeItem("cashflowr_token");
       localStorage.removeItem("cashflowr_user");
@@ -53,6 +55,11 @@ export const AuthProvider = ({ children }) => {
     return data;
   };
 
+  const updateAuthUser = (updatedUser) => {
+    setUser(updatedUser);
+    localStorage.setItem("cashflowr_user", JSON.stringify(updatedUser));
+  };
+
   const logout = () => {
     localStorage.removeItem("cashflowr_token");
     localStorage.removeItem("cashflowr_user");
@@ -68,6 +75,7 @@ export const AuthProvider = ({ children }) => {
         register,
         login,
         logout,
+        updateAuthUser,
         isLoggedIn: Boolean(user),
       }}
     >

@@ -11,7 +11,10 @@ import DashboardLayout from "../layouts/DashboardLayout";
 import ConfirmModal from "../components/common/ConfirmModal";
 import api from "../services/api";
 import { useAuth } from "../context/AuthContext";
-import { formatMoney } from "../utils/formatCurrency";
+import {
+  formatMoney,
+  cleanNotificationMessage,
+} from "../utils/formatCurrency";
 
 const Notifications = () => {
   const { user } = useAuth();
@@ -24,9 +27,7 @@ const Notifications = () => {
   const fetchNotifications = async () => {
     try {
       setLoading(true);
-
       const { data } = await api.get("/notifications");
-
       setNotifications(data.notifications || []);
     } catch (error) {
       setErrorModal(
@@ -68,6 +69,41 @@ const Notifications = () => {
       hour: "numeric",
       minute: "2-digit",
     });
+  };
+
+  const getNotificationAmount = (notification) => {
+    if (
+      notification.metadata?.amount !== undefined &&
+      notification.metadata?.amount !== null
+    ) {
+      return notification.metadata.amount;
+    }
+
+    const match = notification.message?.match(/\$([\d,]+(\.\d+)?)/);
+
+    if (!match) return null;
+
+    return Number(match[1].replace(/,/g, ""));
+  };
+
+  const getTransactionType = (notification) => {
+    if (notification.metadata?.transactionType) {
+      return notification.metadata.transactionType;
+    }
+
+    if (notification.metadata?.type) {
+      return notification.metadata.type;
+    }
+
+    if (notification.message?.toLowerCase().includes("income")) {
+      return "income";
+    }
+
+    if (notification.message?.toLowerCase().includes("expense")) {
+      return "expense";
+    }
+
+    return "expense";
   };
 
   return (
@@ -153,10 +189,8 @@ const Notifications = () => {
           ) : (
             <div className="divide-y divide-white/5">
               {notifications.map((notification) => {
-                const amount = notification.metadata?.amount;
-                const transactionType =
-                  notification.metadata?.transactionType ||
-                  notification.metadata?.type;
+                const amount = getNotificationAmount(notification);
+                const transactionType = getTransactionType(notification);
 
                 return (
                   <div
@@ -165,16 +199,19 @@ const Notifications = () => {
                       notification.read ? "bg-transparent" : "bg-blue-500/5"
                     }`}
                   >
-                    <div className="flex items-start gap-4">
+                    <div className="flex items-start gap-4 min-w-0">
                       <div className="h-12 w-12 rounded-2xl bg-blue-500/10 flex items-center justify-center shrink-0">
                         {notification.read ? (
                           <Bell className="text-blue-400" size={20} />
                         ) : (
-                          <Circle className="text-blue-400 fill-blue-400" size={16} />
+                          <Circle
+                            className="text-blue-400 fill-blue-400"
+                            size={16}
+                          />
                         )}
                       </div>
 
-                      <div>
+                      <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <h3 className="text-white font-semibold">
                             {notification.title}
@@ -188,11 +225,11 @@ const Notifications = () => {
                         </div>
 
                         <p className="text-slate-400 mt-1 leading-relaxed">
-                          {notification.message}
+                          {cleanNotificationMessage(notification.message)}
                         </p>
 
                         {amount !== undefined && amount !== null && (
-                          <div className="mt-3 inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                          <div className="mt-3 inline-flex max-w-full items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2">
                             <Wallet
                               size={16}
                               className={
@@ -203,7 +240,7 @@ const Notifications = () => {
                             />
 
                             <span
-                              className={`font-semibold ${
+                              className={`money-text money-text-sm font-semibold ${
                                 transactionType === "income"
                                   ? "text-emerald-400"
                                   : "text-red-400"
@@ -242,10 +279,12 @@ const Notifications = () => {
 
 const SummaryCard = ({ title, value }) => {
   return (
-    <div className="rounded-[28px] border border-white/10 bg-white/[0.03] backdrop-blur-xl p-6">
+    <div className="rounded-[28px] border border-white/10 bg-white/[0.03] backdrop-blur-xl p-6 min-w-0">
       <p className="text-slate-400 text-sm">{title}</p>
 
-      <h3 className="text-3xl font-bold text-white mt-3">{value}</h3>
+      <h3 className="money-text money-text-xl font-bold text-white mt-3">
+        {value}
+      </h3>
     </div>
   );
 };

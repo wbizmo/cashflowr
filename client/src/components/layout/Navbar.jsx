@@ -3,7 +3,6 @@ import {
   Bell,
   LogOut,
   Menu,
-  Search,
   CheckCheck,
   Sun,
   Moon,
@@ -17,7 +16,10 @@ import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
 
 import api from "../../services/api";
-import { formatMoney } from "../../utils/formatCurrency";
+import {
+  formatMoney,
+  cleanNotificationMessage,
+} from "../../utils/formatCurrency";
 
 const Navbar = () => {
   const { setMobileSidebarOpen } = useUI();
@@ -83,40 +85,67 @@ const Navbar = () => {
     }
   };
 
+  const getNotificationAmount = (notification) => {
+    if (
+      notification.metadata?.amount !== undefined &&
+      notification.metadata?.amount !== null
+    ) {
+      return notification.metadata.amount;
+    }
+
+    const match = notification.message?.match(/\$([\d,]+(\.\d+)?)/);
+
+    if (!match) return null;
+
+    return Number(match[1].replace(/,/g, ""));
+  };
+
+  const getTransactionType = (notification) => {
+    if (notification.metadata?.transactionType) {
+      return notification.metadata.transactionType;
+    }
+
+    if (notification.metadata?.type) {
+      return notification.metadata.type;
+    }
+
+    if (notification.message?.toLowerCase().includes("income")) {
+      return "income";
+    }
+
+    if (notification.message?.toLowerCase().includes("expense")) {
+      return "expense";
+    }
+
+    return "expense";
+  };
+
   useEffect(() => {
     fetchUnreadCount();
   }, []);
 
   return (
     <header className="sticky top-0 z-30 h-20 border-b border-white/10 bg-[#070B14]/80 backdrop-blur-xl flex items-center justify-between px-4 md:px-6">
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4 min-w-0">
         <button
           onClick={() => setMobileSidebarOpen(true)}
-          className="lg:hidden h-11 w-11 rounded-xl border border-white/10 bg-white/[0.03] flex items-center justify-center cursor-pointer hover:scale-105 active:scale-95 transition-all duration-300"
+          className="lg:hidden h-11 w-11 rounded-xl border border-white/10 bg-white/[0.03] flex items-center justify-center cursor-pointer hover:scale-105 active:scale-95 transition-all duration-300 shrink-0"
         >
           <Menu size={20} className="text-white" />
         </button>
 
-        <div>
-          <h2 className="text-xl font-semibold text-white">Dashboard</h2>
+        <div className="min-w-0">
+          <h2 className="text-xl font-semibold text-white truncate">
+            Dashboard
+          </h2>
 
-          <p className="text-sm text-slate-400 hidden md:block">
+          <p className="text-sm text-slate-400 hidden md:block truncate">
             Welcome back, {user?.firstName || "User"}
           </p>
         </div>
       </div>
 
-      <div className="flex items-center gap-3 relative">
-        <div className="hidden md:flex items-center gap-2 px-4 h-11 rounded-xl border border-white/10 bg-white/[0.03] transition-all duration-300 focus-within:border-blue-500/40 focus-within:bg-white/[0.05]">
-          <Search size={18} className="text-slate-400" />
-
-          <input
-            type="text"
-            placeholder="Search..."
-            className="bg-transparent outline-none text-sm text-white placeholder:text-slate-500"
-          />
-        </div>
-
+      <div className="flex items-center gap-3 relative shrink-0">
         <button
           onClick={toggleTheme}
           className="h-11 w-11 rounded-xl border border-white/10 bg-white/[0.03] flex items-center justify-center cursor-pointer hover:scale-105 active:scale-95 hover:bg-white/[0.06] transition-all duration-300"
@@ -172,10 +201,8 @@ const Navbar = () => {
                 </div>
               ) : (
                 notifications.slice(0, 5).map((notification) => {
-                  const amount = notification.metadata?.amount;
-                  const transactionType =
-                    notification.metadata?.transactionType ||
-                    notification.metadata?.type;
+                  const amount = getNotificationAmount(notification);
+                  const transactionType = getTransactionType(notification);
 
                   return (
                     <div
@@ -185,13 +212,13 @@ const Navbar = () => {
                       }`}
                     >
                       <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="text-white text-sm font-medium">
+                        <div className="min-w-0">
+                          <p className="text-white text-sm font-medium truncate">
                             {notification.title}
                           </p>
 
                           <p className="text-slate-400 text-sm mt-1 leading-relaxed">
-                            {notification.message}
+                            {cleanNotificationMessage(notification.message)}
                           </p>
                         </div>
 
@@ -201,7 +228,7 @@ const Navbar = () => {
                       </div>
 
                       {amount !== undefined && amount !== null && (
-                        <div className="mt-3 inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                        <div className="mt-3 inline-flex max-w-full items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2">
                           <Wallet
                             size={15}
                             className={
@@ -212,7 +239,7 @@ const Navbar = () => {
                           />
 
                           <span
-                            className={`text-xs font-semibold ${
+                            className={`money-text money-text-sm font-semibold ${
                               transactionType === "income"
                                 ? "text-emerald-400"
                                 : "text-red-400"

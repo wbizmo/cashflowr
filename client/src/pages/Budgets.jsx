@@ -68,7 +68,6 @@ const Budgets = () => {
 
   const availableCategories = categories.filter((category) => {
     if (editingId) return true;
-
     return !budgets.some((budget) => budget.category?._id === category._id);
   });
 
@@ -239,12 +238,12 @@ const Budgets = () => {
               return (
                 <div
                   key={budget._id}
-                  className="rounded-[32px] border border-white/10 bg-white/[0.03] backdrop-blur-xl p-6"
+                  className="rounded-[32px] border border-white/10 bg-white/[0.03] backdrop-blur-xl p-6 min-w-0"
                 >
                   <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4 min-w-0">
                       <div
-                        className="h-14 w-14 rounded-2xl flex items-center justify-center"
+                        className="h-14 w-14 rounded-2xl flex items-center justify-center shrink-0"
                         style={{
                           backgroundColor: `${
                             budget.category?.color || "#3B82F6"
@@ -259,19 +258,19 @@ const Budgets = () => {
                         />
                       </div>
 
-                      <div>
-                        <h3 className="text-white font-semibold text-lg">
+                      <div className="min-w-0">
+                        <h3 className="text-white font-semibold text-lg truncate">
                           {budget.category?.name}
                         </h3>
 
-                        <p className="text-slate-400 text-sm mt-1">
+                        <p className="money-text money-text-sm text-slate-400 mt-1">
                           {formatMoney(budget.spent || 0, currency)} spent of{" "}
                           {formatMoney(budget.amount, currency)}
                         </p>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 shrink-0">
                       <button
                         onClick={() => openEditModal(budget)}
                         className="h-10 w-10 rounded-xl border border-white/10 bg-white/[0.03] flex items-center justify-center hover:bg-white/[0.06] cursor-pointer"
@@ -289,11 +288,11 @@ const Budgets = () => {
                   </div>
 
                   <div className="mt-6">
-                    <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-start justify-between gap-3 text-sm">
                       <span className="text-slate-400">
                         {budget.percentage || 0}% used
                       </span>
-                      <span className="text-slate-400">
+                      <span className="money-text money-text-sm text-slate-400 text-right max-w-[60%]">
                         {formatMoney(budget.remaining || 0, currency)} left
                       </span>
                     </div>
@@ -434,9 +433,11 @@ const Budgets = () => {
 
 const SummaryCard = ({ title, value }) => {
   return (
-    <div className="rounded-[28px] border border-white/10 bg-white/[0.03] backdrop-blur-xl p-6">
+    <div className="rounded-[28px] border border-white/10 bg-white/[0.03] backdrop-blur-xl p-6 min-w-0">
       <p className="text-slate-400 text-sm">{title}</p>
-      <h3 className="text-3xl font-bold text-white mt-3">{value}</h3>
+      <h3 className="money-text money-text-xl font-bold text-white mt-3">
+        {value}
+      </h3>
     </div>
   );
 };

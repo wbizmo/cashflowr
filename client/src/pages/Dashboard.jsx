@@ -185,9 +185,9 @@ const Dashboard = () => {
                           key={transaction._id}
                           className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4"
                         >
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-3 min-w-0">
                             <div
-                              className="h-12 w-12 rounded-2xl flex items-center justify-center"
+                              className="h-12 w-12 rounded-2xl flex items-center justify-center shrink-0"
                               style={{
                                 backgroundColor: `${
                                   transaction.category?.color || "#3B82F6"
@@ -203,19 +203,19 @@ const Dashboard = () => {
                               />
                             </div>
 
-                            <div>
-                              <p className="text-white font-medium">
+                            <div className="min-w-0">
+                              <p className="text-white font-medium truncate">
                                 {transaction.title}
                               </p>
 
-                              <p className="text-slate-400 text-sm">
+                              <p className="text-slate-400 text-sm truncate">
                                 {transaction.category?.name || "Uncategorized"}
                               </p>
                             </div>
                           </div>
 
                           <p
-                            className={`font-bold ${
+                            className={`money-text money-text-lg font-bold text-right max-w-[45%] ${
                               transaction.type === "income"
                                 ? "text-emerald-400"
                                 : "text-red-400"
@@ -242,12 +242,12 @@ const Dashboard = () => {
                   ) : (
                     summary?.budgets?.map((budget) => (
                       <div key={budget._id}>
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-start justify-between gap-4">
                           <p className="text-white font-medium">
                             {budget.category?.name}
                           </p>
 
-                          <p className="text-slate-400 text-sm">
+                          <p className="money-text money-text-sm text-slate-400 text-right max-w-[55%]">
                             {formatMoney(budget.spent || 0, currency)} /{" "}
                             {formatMoney(budget.amount || 0, currency)}
                           </p>
@@ -262,7 +262,7 @@ const Dashboard = () => {
                           />
                         </div>
 
-                        <p className="text-slate-500 text-xs mt-2">
+                        <p className="money-text money-text-sm text-slate-500 mt-2">
                           {formatMoney(budget.remaining || 0, currency)} left
                         </p>
                       </div>
@@ -290,7 +290,7 @@ const StatCard = ({ title, value, icon: Icon, tone }) => {
     <motion.div
       initial={{ opacity: 0, y: 18 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-[28px] border border-white/10 bg-white/[0.03] backdrop-blur-xl p-6"
+      className="rounded-[28px] border border-white/10 bg-white/[0.03] backdrop-blur-xl p-6 min-w-0"
     >
       <div
         className={`h-12 w-12 rounded-2xl flex items-center justify-center ${
@@ -302,7 +302,9 @@ const StatCard = ({ title, value, icon: Icon, tone }) => {
 
       <p className="text-slate-400 text-sm mt-5">{title}</p>
 
-      <h3 className="text-3xl font-bold text-white mt-2">{value}</h3>
+      <h3 className="money-text money-text-xl font-bold text-white mt-2">
+        {value}
+      </h3>
     </motion.div>
   );
 };

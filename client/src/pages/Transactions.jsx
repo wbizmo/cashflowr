@@ -273,9 +273,9 @@ const Transactions = () => {
                     key={transaction._id}
                     className="p-5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5 hover:bg-white/[0.03] transition-all"
                   >
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4 min-w-0">
                       <div
-                        className="h-14 w-14 rounded-2xl flex items-center justify-center"
+                        className="h-14 w-14 rounded-2xl flex items-center justify-center shrink-0"
                         style={{
                           backgroundColor: `${
                             transaction.category?.color || "#3B82F6"
@@ -290,12 +290,12 @@ const Transactions = () => {
                         />
                       </div>
 
-                      <div>
-                        <h3 className="text-white font-semibold text-lg">
+                      <div className="min-w-0">
+                        <h3 className="text-white font-semibold text-lg truncate">
                           {transaction.title}
                         </h3>
 
-                        <p className="text-slate-400 text-sm mt-1">
+                        <p className="text-slate-400 text-sm mt-1 truncate">
                           {transaction.category?.name || "Uncategorized"} •{" "}
                           {new Date(transaction.date).toLocaleDateString()}
                         </p>
@@ -304,7 +304,7 @@ const Transactions = () => {
 
                     <div className="flex items-center justify-between lg:justify-end gap-5">
                       <p
-                        className={`text-lg font-bold ${
+                        className={`money-text money-text-lg text-right max-w-[180px] font-bold ${
                           transaction.type === "income"
                             ? "text-emerald-400"
                             : "text-red-400"
@@ -314,7 +314,7 @@ const Transactions = () => {
                         {formatMoney(transaction.amount, currency)}
                       </p>
 
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 shrink-0">
                         <button
                           onClick={() => openEditModal(transaction)}
                           className="h-10 w-10 rounded-xl border border-white/10 bg-white/[0.03] flex items-center justify-center hover:bg-white/[0.06] cursor-pointer"
@@ -486,7 +486,7 @@ const SummaryCard = ({ title, value, icon: Icon, tone }) => {
   };
 
   return (
-    <div className="rounded-[28px] border border-white/10 bg-white/[0.03] backdrop-blur-xl p-6">
+    <div className="rounded-[28px] border border-white/10 bg-white/[0.03] backdrop-blur-xl p-6 min-w-0">
       <div
         className={`h-12 w-12 rounded-2xl flex items-center justify-center ${
           tones[tone] || tones.blue
@@ -497,7 +497,9 @@ const SummaryCard = ({ title, value, icon: Icon, tone }) => {
 
       <p className="text-slate-400 text-sm mt-5">{title}</p>
 
-      <h3 className="text-3xl font-bold text-white mt-2">{value}</h3>
+      <h3 className="money-text money-text-xl font-bold text-white mt-2">
+        {value}
+      </h3>
     </div>
   );
 };
