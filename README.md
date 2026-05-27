@@ -707,7 +707,7 @@ VITE_API_URL=http://localhost:5000/api
 ## Clone Repository
 
 ```bash
-git clone https://github.com/yourusername/cashflowr.git
+git clone https://github.com/wbizmo/cashflowr.git
 cd cashflowr
 ```
 
