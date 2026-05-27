@@ -8,6 +8,40 @@ Built with React, Node.js, Express, MongoDB, and Tailwind CSS, CashFlowr provide
 
 ---
 
+# Live Application
+
+Frontend / App Demo:
+
+https://cashflowr-orpin.vercel.app
+
+Backend API:
+
+https://cashflowr-api-81rd.onrender.com
+
+GitHub Repository:
+
+https://github.com/wbizmo/cashflowr
+
+---
+
+# Application Screenshots
+
+![](./assets/528_1x_shots_so.png)
+
+---
+
+![](./assets/215_1x_shots_so.png)
+
+---
+
+![](./assets/261_1x_shots_so.png)
+
+---
+
+![](./assets/65_1x_shots_so.png)
+
+---
+
 # Author
 
 Ashibuogwu Williams
@@ -742,13 +776,13 @@ Database → MongoDB Atlas
 Frontend production environment variable:
 
 ```env
-VITE_API_URL=https://your-backend-url.onrender.com/api
+VITE_API_URL=https://cashflowr-api-81rd.onrender.com/api
 ```
 
 Backend production environment variable:
 
 ```env
-CLIENT_URL=https://your-frontend-url.vercel.app
+CLIENT_URL=https://cashflowr-orpin.vercel.app
 ```
 
 ---
