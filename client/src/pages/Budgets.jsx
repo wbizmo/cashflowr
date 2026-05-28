@@ -338,25 +338,27 @@ const Budgets = () => {
 
           <form
             onSubmit={saveBudget}
-            className="relative w-full max-w-xl rounded-[32px] border border-white/10 bg-[#0B1120] p-6 md:p-8 shadow-2xl"
+            className="relative w-full max-w-xl max-h-[90vh] rounded-[32px] border border-white/10 bg-[#0B1120] shadow-2xl overflow-hidden flex flex-col"
           >
-            <button
-              type="button"
-              onClick={closeModal}
-              className="absolute right-5 top-5 h-10 w-10 rounded-xl border border-white/10 bg-white/[0.03] flex items-center justify-center cursor-pointer hover:bg-white/[0.06]"
-            >
-              <X size={18} className="text-white" />
-            </button>
+            <div className="shrink-0 p-6 md:p-8 border-b border-white/10">
+              <button
+                type="button"
+                onClick={closeModal}
+                className="absolute right-5 top-5 h-10 w-10 rounded-xl border border-white/10 bg-white/[0.03] flex items-center justify-center cursor-pointer hover:bg-white/[0.06]"
+              >
+                <X size={18} className="text-white" />
+              </button>
 
-            <h2 className="text-3xl font-bold text-white pr-12">
-              {editingId ? "Edit Budget" : "New Budget"}
-            </h2>
+              <h2 className="text-3xl font-bold text-white pr-12">
+                {editingId ? "Edit Budget" : "New Budget"}
+              </h2>
 
-            <p className="text-slate-400 mt-2">
-              Choose an expense category and set the monthly limit.
-            </p>
+              <p className="text-slate-400 mt-2">
+                Choose an expense category and set the monthly limit.
+              </p>
+            </div>
 
-            <div className="mt-8 space-y-5">
+            <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-5">
               <div>
                 <label className="text-sm text-slate-300">
                   Expense category
@@ -393,7 +395,9 @@ const Budgets = () => {
                   className="mt-2 form-input"
                 />
               </div>
+            </div>
 
+            <div className="shrink-0 p-6 md:p-8 border-t border-white/10 bg-[#0B1120]">
               <button
                 disabled={saving}
                 className="w-full h-13 rounded-2xl bg-white text-black font-semibold hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer disabled:opacity-60"

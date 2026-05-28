@@ -339,7 +339,7 @@ const Transactions = () => {
       </div>
 
       {modalOpen && (
-        <div className="fixed inset-0 z-[999] flex items-center justify-center px-4">
+        <div className="fixed inset-0 z-[999] flex items-center justify-center px-4 py-6">
           <div
             onClick={closeModal}
             className="absolute inset-0 bg-black/70 backdrop-blur-md"
@@ -347,110 +347,116 @@ const Transactions = () => {
 
           <form
             onSubmit={handleSubmit}
-            className="relative w-full max-w-2xl rounded-[32px] border border-white/10 bg-[#0B1120] p-6 md:p-8 shadow-2xl"
+            className="relative w-full max-w-2xl max-h-[90vh] rounded-[32px] border border-white/10 bg-[#0B1120] shadow-2xl overflow-hidden flex flex-col"
           >
-            <button
-              type="button"
-              onClick={closeModal}
-              className="absolute right-5 top-5 h-10 w-10 rounded-xl border border-white/10 bg-white/[0.03] flex items-center justify-center cursor-pointer"
-            >
-              <X size={18} className="text-white" />
-            </button>
+            <div className="shrink-0 p-6 md:p-8 border-b border-white/10">
+              <button
+                type="button"
+                onClick={closeModal}
+                className="absolute right-5 top-5 h-10 w-10 rounded-xl border border-white/10 bg-white/[0.03] flex items-center justify-center cursor-pointer hover:bg-white/[0.06]"
+              >
+                <X size={18} className="text-white" />
+              </button>
 
-            <h2 className="text-3xl font-bold text-white">
-              {editingId ? "Edit Transaction" : "Add Transaction"}
-            </h2>
+              <h2 className="text-3xl font-bold text-white pr-12">
+                {editingId ? "Edit Transaction" : "Add Transaction"}
+              </h2>
 
-            <p className="text-slate-400 mt-2">
-              Record income and expenses using your saved categories.
-            </p>
-
-            <div className="mt-8 grid md:grid-cols-2 gap-5">
-              <Field label="Title">
-                <input
-                  name="title"
-                  value={form.title}
-                  onChange={handleChange}
-                  required
-                  placeholder="e.g. Groceries"
-                  className="form-input"
-                />
-              </Field>
-
-              <Field label="Amount">
-                <input
-                  name="amount"
-                  type="number"
-                  value={form.amount}
-                  onChange={handleChange}
-                  required
-                  min="0"
-                  placeholder="0.00"
-                  className="form-input"
-                />
-              </Field>
-
-              <Field label="Type">
-                <select
-                  name="type"
-                  value={form.type}
-                  onChange={handleChange}
-                  className="form-input select-dark"
-                >
-                  <option value="expense">Expense</option>
-                  <option value="income">Income</option>
-                </select>
-              </Field>
-
-              <Field label="Category">
-                <select
-                  name="category"
-                  value={form.category}
-                  onChange={handleChange}
-                  required
-                  className="form-input select-dark"
-                >
-                  <option value="">Select category</option>
-
-                  {filteredCategories.map((category) => (
-                    <option key={category._id} value={category._id}>
-                      {category.name}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-
-              <Field label="Date">
-                <input
-                  name="date"
-                  type="date"
-                  value={form.date}
-                  onChange={handleChange}
-                  className="form-input"
-                />
-              </Field>
-
-              <Field label="Description">
-                <input
-                  name="description"
-                  value={form.description}
-                  onChange={handleChange}
-                  placeholder="Optional note"
-                  className="form-input"
-                />
-              </Field>
+              <p className="text-slate-400 mt-2">
+                Record income and expenses using your saved categories.
+              </p>
             </div>
 
-            <button
-              disabled={saving}
-              className="mt-8 w-full h-13 rounded-2xl bg-white text-black font-semibold hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer disabled:opacity-60"
-            >
-              {saving
-                ? "Saving..."
-                : editingId
-                  ? "Save Changes"
-                  : "Save Transaction"}
-            </button>
+            <div className="flex-1 overflow-y-auto p-6 md:p-8">
+              <div className="grid md:grid-cols-2 gap-5">
+                <Field label="Title">
+                  <input
+                    name="title"
+                    value={form.title}
+                    onChange={handleChange}
+                    required
+                    placeholder="e.g. Groceries"
+                    className="form-input"
+                  />
+                </Field>
+
+                <Field label="Amount">
+                  <input
+                    name="amount"
+                    type="number"
+                    value={form.amount}
+                    onChange={handleChange}
+                    required
+                    min="0"
+                    placeholder="0.00"
+                    className="form-input"
+                  />
+                </Field>
+
+                <Field label="Type">
+                  <select
+                    name="type"
+                    value={form.type}
+                    onChange={handleChange}
+                    className="form-input select-dark"
+                  >
+                    <option value="expense">Expense</option>
+                    <option value="income">Income</option>
+                  </select>
+                </Field>
+
+                <Field label="Category">
+                  <select
+                    name="category"
+                    value={form.category}
+                    onChange={handleChange}
+                    required
+                    className="form-input select-dark"
+                  >
+                    <option value="">Select category</option>
+
+                    {filteredCategories.map((category) => (
+                      <option key={category._id} value={category._id}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+
+                <Field label="Date">
+                  <input
+                    name="date"
+                    type="date"
+                    value={form.date}
+                    onChange={handleChange}
+                    className="form-input"
+                  />
+                </Field>
+
+                <Field label="Description">
+                  <input
+                    name="description"
+                    value={form.description}
+                    onChange={handleChange}
+                    placeholder="Optional note"
+                    className="form-input"
+                  />
+                </Field>
+              </div>
+            </div>
+
+            <div className="shrink-0 p-6 md:p-8 border-t border-white/10 bg-[#0B1120]">
+              <button
+                disabled={saving}
+                className="w-full h-13 rounded-2xl bg-white text-black font-semibold hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer disabled:opacity-60"
+              >
+                {saving
+                  ? "Saving..."
+                  : editingId
+                    ? "Save Changes"
+                    : "Save Transaction"}
+              </button>
+            </div>
           </form>
         </div>
       )}
