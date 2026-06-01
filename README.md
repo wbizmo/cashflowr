@@ -24,6 +24,18 @@ https://github.com/wbizmo/cashflowr
 
 ---
 
+## Render Backend Notice
+
+The backend API is hosted on Render's free service tier. Because of this, the backend may temporarily sleep after a period of inactivity.
+
+If the live app appears static, login/register takes too long, or API requests do not respond immediately, open the backend API URL first:
+
+https://cashflowr-api-81rd.onrender.com
+
+Wait until the API wakes up and displays a response, then return to the frontend application and try again:
+
+https://cashflowr-orpin.vercel.app
+
 # Application Screenshots
 
 ![](./assets/528_1x_shots_so.png)
