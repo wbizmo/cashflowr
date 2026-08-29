@@ -32,6 +32,8 @@ jobs:
           cache-dependency-path: server/package-lock.json
       - name: Install
         run: npm ci
+      - name: Production dependency audit
+        run: npm audit --omit=dev --audit-level=high
       - name: Syntax check
         run: npm run check
       - name: Unit tests
@@ -55,6 +57,8 @@ jobs:
           cache-dependency-path: client/package-lock.json
       - name: Install
         run: npm ci
+      - name: Production dependency audit
+        run: npm audit --omit=dev --audit-level=high
       - name: Lint
         run: npm run lint
       - name: Build
