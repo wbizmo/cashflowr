@@ -1,286 +1,178 @@
-import { useEffect, useState } from "react";
-import {
-  Bell,
-  LogOut,
-  Menu,
-  CheckCheck,
-  Sun,
-  Moon,
-  Wallet,
-} from "lucide-react";
-
-import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { Bell, CheckCheck, LogOut, Menu, Moon, Plus, Sun } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import { useUI } from "../../context/UIContext";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
-
+import { getNavigationItem } from "../../config/navigation";
 import api from "../../services/api";
-import {
-  formatMoney,
-  cleanNotificationMessage,
-} from "../../utils/formatCurrency";
+import { cleanNotificationMessage } from "../../utils/formatCurrency";
 
 const Navbar = () => {
   const { setMobileSidebarOpen } = useUI();
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const location = useLocation();
   const navigate = useNavigate();
-
-  const currency = user?.currency || "USD";
+  const current = useMemo(() => getNavigationItem(location.pathname), [location.pathname]);
 
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loadingNotifications, setLoadingNotifications] = useState(false);
-
-  const handleLogout = () => {
-    logout();
-    navigate("/");
-  };
-
-  const fetchNotifications = async () => {
-    try {
-      setLoadingNotifications(true);
-      const { data } = await api.get("/notifications");
-      setNotifications(data.notifications || []);
-    } catch (error) {
-      console.log("Failed to fetch notifications", error);
-    } finally {
-      setLoadingNotifications(false);
-    }
-  };
+  const [loggingOut, setLoggingOut] = useState(false);
 
   const fetchUnreadCount = async () => {
     try {
       const { data } = await api.get("/notifications/unread-count");
       setUnreadCount(data.count || 0);
-    } catch (error) {
-      console.log("Failed to fetch unread count", error);
+    } catch {
+      // A global 401 handler owns session expiry. Notification failure should not block the shell.
     }
   };
 
-  const handleBellClick = async () => {
-    setNotificationsOpen((prev) => !prev);
-
-    if (!notificationsOpen) {
-      await fetchNotifications();
-    }
-  };
-
-  const markAllAsRead = async () => {
+  const fetchNotifications = async () => {
     try {
-      await api.patch("/notifications/mark-all-read");
-
-      setUnreadCount(0);
-
-      setNotifications((prev) =>
-        prev.map((item) => ({
-          ...item,
-          read: true,
-        }))
-      );
-    } catch (error) {
-      console.log("Failed to mark notifications", error);
+      setLoadingNotifications(true);
+      const { data } = await api.get("/notifications", { params: { limit: 6 } });
+      setNotifications(data.notifications || []);
+    } catch {
+      setNotifications([]);
+    } finally {
+      setLoadingNotifications(false);
     }
-  };
-
-  const getNotificationAmount = (notification) => {
-    if (
-      notification.metadata?.amount !== undefined &&
-      notification.metadata?.amount !== null
-    ) {
-      return notification.metadata.amount;
-    }
-
-    const match = notification.message?.match(/\$([\d,]+(\.\d+)?)/);
-
-    if (!match) return null;
-
-    return Number(match[1].replace(/,/g, ""));
-  };
-
-  const getTransactionType = (notification) => {
-    if (notification.metadata?.transactionType) {
-      return notification.metadata.transactionType;
-    }
-
-    if (notification.metadata?.type) {
-      return notification.metadata.type;
-    }
-
-    if (notification.message?.toLowerCase().includes("income")) {
-      return "income";
-    }
-
-    if (notification.message?.toLowerCase().includes("expense")) {
-      return "expense";
-    }
-
-    return "expense";
   };
 
   useEffect(() => {
     fetchUnreadCount();
   }, []);
 
+  useEffect(() => {
+    setNotificationsOpen(false);
+  }, [location.pathname]);
+
+  const handleBellClick = async () => {
+    const nextOpen = !notificationsOpen;
+    setNotificationsOpen(nextOpen);
+    if (nextOpen) await fetchNotifications();
+  };
+
+  const markAllAsRead = async () => {
+    try {
+      await api.patch("/notifications/mark-all-read");
+      setUnreadCount(0);
+      setNotifications((items) => items.map((item) => ({ ...item, read: true })));
+    } catch {
+      // Keep the existing state when the request fails.
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      setLoggingOut(true);
+      await logout();
+      navigate("/", { replace: true });
+    } finally {
+      setLoggingOut(false);
+    }
+  };
+
   return (
-    <header className="sticky top-0 z-30 h-20 border-b border-white/10 bg-[#070B14]/80 backdrop-blur-xl flex items-center justify-between px-4 md:px-6">
-      <div className="flex items-center gap-4 min-w-0">
+    <header className="sticky top-0 z-30 h-16 border-b border-white/10 bg-[#070B14]/90 backdrop-blur-xl flex items-center justify-between px-4 md:px-6">
+      <div className="flex items-center gap-3 min-w-0">
         <button
+          type="button"
+          aria-label="Open navigation"
           onClick={() => setMobileSidebarOpen(true)}
-          className="lg:hidden h-11 w-11 rounded-xl border border-white/10 bg-white/[0.03] flex items-center justify-center cursor-pointer hover:scale-105 active:scale-95 transition-all duration-300 shrink-0"
+          className="lg:hidden icon-button shrink-0"
         >
-          <Menu size={20} className="text-white" />
+          <Menu size={19} />
         </button>
-
         <div className="min-w-0">
-          <h2 className="text-xl font-semibold text-white truncate">
-            Dashboard
-          </h2>
-
-          <p className="text-sm text-slate-400 hidden md:block truncate">
-            Welcome back, {user?.firstName || "User"}
+          <h2 className="text-sm md:text-base font-semibold text-white truncate">{current?.name || "CashFlowr"}</h2>
+          <p className="text-xs text-slate-500 hidden sm:block truncate">
+            {current?.path === "/dashboard" ? `Welcome back, ${user?.firstName || "there"}` : "Your personal finance workspace"}
           </p>
         </div>
       </div>
 
-      <div className="flex items-center gap-3 relative shrink-0">
-        <button
-          onClick={toggleTheme}
-          className="h-11 w-11 rounded-xl border border-white/10 bg-white/[0.03] flex items-center justify-center cursor-pointer hover:scale-105 active:scale-95 hover:bg-white/[0.06] transition-all duration-300"
-          title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-        >
-          {theme === "dark" ? (
-            <Sun size={18} className="text-white" />
-          ) : (
-            <Moon size={18} className="text-white" />
-          )}
+      <div className="flex items-center gap-2 relative shrink-0">
+        {location.pathname !== "/transactions" && (
+          <Link
+            to="/transactions?new=1"
+            className="hidden md:inline-flex h-9 items-center gap-2 rounded-xl bg-blue-500 px-3.5 text-sm font-semibold text-white hover:bg-blue-400"
+          >
+            <Plus size={16} /> New transaction
+          </Link>
+        )}
+
+        <button type="button" onClick={toggleTheme} className="icon-button" aria-label="Toggle color theme">
+          {theme === "dark" ? <Sun size={17} /> : <Moon size={17} />}
         </button>
 
-        <button
-          onClick={handleBellClick}
-          className="relative h-11 w-11 rounded-xl border border-white/10 bg-white/[0.03] flex items-center justify-center cursor-pointer hover:scale-105 active:scale-95 hover:bg-white/[0.06] transition-all duration-300"
-        >
-          <Bell size={18} className="text-white" />
-
+        <button type="button" onClick={handleBellClick} className="icon-button relative" aria-label="Open notifications" aria-expanded={notificationsOpen}>
+          <Bell size={17} />
           {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-red-500 text-white text-[11px] flex items-center justify-center border border-[#070B14]">
-              {unreadCount}
+            <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-red-500 text-white text-[9px] leading-none flex items-center justify-center border border-[#070B14]">
+              {unreadCount > 99 ? "99+" : unreadCount}
             </span>
           )}
         </button>
 
         {notificationsOpen && (
-          <div className="absolute right-0 top-14 w-[360px] max-w-[calc(100vw-2rem)] rounded-3xl border border-white/10 bg-[#0B1120] shadow-2xl overflow-hidden">
-            <div className="p-5 border-b border-white/10 flex items-center justify-between">
+          <div className="absolute right-0 top-12 w-[380px] max-w-[calc(100vw-2rem)] finance-panel shadow-2xl overflow-hidden">
+            <div className="p-4 border-b border-white/10 flex items-center justify-between gap-3">
               <div>
-                <h3 className="text-white font-semibold">Notifications</h3>
-
-                <p className="text-xs text-slate-500 mt-1">
-                  Latest account and finance updates
-                </p>
+                <h3 className="text-sm text-white font-semibold">Notifications</h3>
+                <p className="text-[11px] text-slate-500 mt-0.5">Latest account activity</p>
               </div>
-
-              <button
-                onClick={markAllAsRead}
-                className="h-9 w-9 rounded-xl bg-white/[0.03] border border-white/10 flex items-center justify-center hover:bg-white/[0.06] cursor-pointer"
-              >
-                <CheckCheck size={16} className="text-slate-300" />
+              <button type="button" onClick={markAllAsRead} className="icon-button h-9 w-9" aria-label="Mark all notifications as read">
+                <CheckCheck size={15} />
               </button>
             </div>
 
             <div className="max-h-80 overflow-y-auto">
               {loadingNotifications ? (
-                <div className="p-5 text-slate-400 text-sm">
-                  Loading notifications...
-                </div>
+                <div className="p-5 text-slate-500 text-sm">Loading…</div>
               ) : notifications.length === 0 ? (
-                <div className="p-5 text-slate-400 text-sm">
-                  No notifications yet.
-                </div>
+                <div className="p-5 text-slate-500 text-sm">You’re all caught up.</div>
               ) : (
-                notifications.slice(0, 5).map((notification) => {
-                  const amount = getNotificationAmount(notification);
-                  const transactionType = getTransactionType(notification);
-
-                  return (
-                    <div
-                      key={notification._id}
-                      className={`p-5 border-b border-white/5 ${
-                        notification.read ? "bg-transparent" : "bg-blue-500/5"
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="text-white text-sm font-medium truncate">
-                            {notification.title}
-                          </p>
-
-                          <p className="text-slate-400 text-sm mt-1 leading-relaxed">
-                            {cleanNotificationMessage(notification.message)}
-                          </p>
-                        </div>
-
-                        {!notification.read && (
-                          <span className="mt-1 h-2.5 w-2.5 rounded-full bg-blue-400 shrink-0" />
-                        )}
+                notifications.map((notification) => (
+                  <div key={notification._id} className={`p-4 border-b border-white/5 ${notification.read ? "" : "bg-blue-500/[0.06]"}`}>
+                    <div className="flex items-start gap-3">
+                      <span className={`mt-1.5 h-2 w-2 rounded-full shrink-0 ${notification.read ? "bg-slate-700" : "bg-blue-400"}`} />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-white truncate">{notification.title}</p>
+                        <p className="text-xs text-slate-400 mt-1 leading-relaxed line-clamp-2">
+                          {cleanNotificationMessage(notification.message)}
+                        </p>
+                        <p className="text-[10px] text-slate-600 mt-2">{new Date(notification.createdAt).toLocaleString()}</p>
                       </div>
-
-                      {amount !== undefined && amount !== null && (
-                        <div className="mt-3 inline-flex max-w-full items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2">
-                          <Wallet
-                            size={15}
-                            className={
-                              transactionType === "income"
-                                ? "text-emerald-400"
-                                : "text-red-400"
-                            }
-                          />
-
-                          <span
-                            className={`money-text money-text-sm font-semibold ${
-                              transactionType === "income"
-                                ? "text-emerald-400"
-                                : "text-red-400"
-                            }`}
-                          >
-                            {transactionType === "income" ? "+" : "-"}
-                            {formatMoney(amount, currency)}
-                          </span>
-                        </div>
-                      )}
-
-                      <p className="text-slate-600 text-xs mt-3">
-                        {new Date(notification.createdAt).toLocaleString()}
-                      </p>
                     </div>
-                  );
-                })
+                  </div>
+                ))
               )}
             </div>
-
-            <Link
-              to="/notifications"
-              onClick={() => setNotificationsOpen(false)}
-              className="block p-4 text-center text-sm text-blue-400 hover:text-blue-300 border-t border-white/10"
-            >
-              View all notifications
+            <Link to="/notifications" className="block p-3.5 text-center text-xs font-medium text-blue-400 hover:text-blue-300">
+              View notification center
             </Link>
           </div>
         )}
 
-        <div className="h-11 w-11 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 border border-white/10 flex items-center justify-center text-white font-semibold">
-          {user?.firstName?.[0] || "U"}
+        <div className="hidden sm:flex h-9 w-9 rounded-xl bg-blue-500/15 border border-blue-500/20 items-center justify-center text-blue-300 text-sm font-bold">
+          {user?.firstName?.[0]?.toUpperCase() || "U"}
         </div>
 
         <button
+          type="button"
           onClick={handleLogout}
-          className="h-11 px-4 rounded-xl border border-white/10 bg-white/[0.03] flex items-center gap-2 text-white text-sm cursor-pointer hover:bg-red-500/10 hover:border-red-500/30 transition-all duration-300"
+          disabled={loggingOut}
+          className="icon-button disabled:opacity-50"
+          aria-label="Sign out"
+          title="Sign out"
         >
           <LogOut size={17} />
-
-          <span className="hidden md:inline">Logout</span>
         </button>
       </div>
     </header>

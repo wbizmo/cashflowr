@@ -4,15 +4,14 @@ import MobileSidebar from "../components/layout/MobileSidebar";
 
 const DashboardLayout = ({ children }) => {
   return (
-    <div className="min-h-screen bg-[#070B14] text-white">
+    <div className="app-shell min-h-screen text-white">
       <Sidebar />
       <MobileSidebar />
 
-      <div className="lg:pl-72">
+      <div className="lg:pl-64 min-w-0">
         <Navbar />
-
-        <main className="min-h-[calc(100vh-5rem)] p-4 md:p-6 lg:p-8">
-          {children}
+        <main className="min-h-[calc(100vh-4rem)] px-4 py-5 md:px-6 md:py-7 xl:px-8 xl:py-8">
+          <div className="mx-auto w-full max-w-[1600px]">{children}</div>
         </main>
       </div>
     </div>

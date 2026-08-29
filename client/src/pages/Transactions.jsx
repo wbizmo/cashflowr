@@ -1,14 +1,6 @@
-import { useMemo, useState } from "react";
-import {
-  Plus,
-  Pencil,
-  Trash2,
-  X,
-  Search,
-  Wallet,
-  ArrowDownCircle,
-  ArrowUpCircle,
-} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ChevronLeft, ChevronRight, Filter, Pencil, Plus, Receipt, Search, Trash2, X } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
 
 import DashboardLayout from "../layouts/DashboardLayout";
 import ConfirmModal from "../components/common/ConfirmModal";
@@ -27,67 +19,63 @@ const initialForm = {
 };
 
 const Transactions = () => {
+  const { user } = useAuth();
+  const currency = user?.currency || "USD";
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [page, setPage] = useState(1);
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
+  const [type, setType] = useState("all");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [form, setForm] = useState(initialForm);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [actionError, setActionError] = useState("");
+
   const {
     transactions,
     categories,
+    pagination,
     loading,
+    error,
     createTransaction,
     updateTransaction,
     deleteTransaction,
-  } = useTransactions();
+  } = useTransactions({ page, limit: 15, search, type, from, to });
 
-  const { user } = useAuth();
-  const currency = user?.currency || "USD";
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearch(searchInput.trim());
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
 
-  const [form, setForm] = useState(initialForm);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editingId, setEditingId] = useState(null);
-  const [saving, setSaving] = useState(false);
-  const [search, setSearch] = useState("");
-  const [typeFilter, setTypeFilter] = useState("all");
-  const [deleteTarget, setDeleteTarget] = useState(null);
-  const [errorModal, setErrorModal] = useState(null);
+  useEffect(() => {
+    if (searchParams.get("new") === "1") {
+      openCreateModal();
+      const next = new URLSearchParams(searchParams);
+      next.delete("new");
+      setSearchParams(next, { replace: true });
+    }
+  }, []);
 
-  const filteredCategories = categories.filter(
-    (category) => category.type === form.type
+  const filteredCategories = useMemo(
+    () => categories.filter((category) => category.type === form.type),
+    [categories, form.type]
   );
 
-  const filteredTransactions = transactions.filter((transaction) => {
-    const matchesSearch =
-      transaction.title.toLowerCase().includes(search.toLowerCase()) ||
-      transaction.category?.name?.toLowerCase().includes(search.toLowerCase());
-
-    const matchesType = typeFilter === "all" || transaction.type === typeFilter;
-
-    return matchesSearch && matchesType;
-  });
-
-  const totals = useMemo(() => {
-    const income = transactions
-      .filter((item) => item.type === "income")
-      .reduce((sum, item) => sum + item.amount, 0);
-
-    const expenses = transactions
-      .filter((item) => item.type === "expense")
-      .reduce((sum, item) => sum + item.amount, 0);
-
-    return {
-      income,
-      expenses,
-      balance: income - expenses,
-      count: transactions.length,
-    };
-  }, [transactions]);
-
   const openCreateModal = () => {
-    setEditingId(null);
-    setForm(initialForm);
+    setEditing(null);
+    setForm({ ...initialForm, date: new Date().toISOString().slice(0, 10) });
     setModalOpen(true);
   };
 
   const openEditModal = (transaction) => {
-    setEditingId(transaction._id);
-
+    setEditing(transaction);
     setForm({
       title: transaction.title,
       amount: transaction.amount,
@@ -96,367 +84,171 @@ const Transactions = () => {
       description: transaction.description || "",
       date: transaction.date ? transaction.date.slice(0, 10) : "",
     });
-
     setModalOpen(true);
   };
 
   const closeModal = () => {
     setModalOpen(false);
-    setEditingId(null);
+    setEditing(null);
     setForm(initialForm);
   };
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-
-    setForm((prev) => ({
-      ...prev,
+  const handleField = (name, value) => {
+    setForm((current) => ({
+      ...current,
       [name]: value,
       ...(name === "type" ? { category: "" } : {}),
     }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
+  const handleSubmit = async (event) => {
+    event.preventDefault();
     try {
       setSaving(true);
-
+      setActionError("");
       const payload = {
         ...form,
         amount: Number(form.amount),
         date: form.date || undefined,
+        description: form.description.trim(),
       };
-
-      if (editingId) {
-        await updateTransaction(editingId, payload);
-      } else {
-        await createTransaction(payload);
-      }
-
+      if (editing) await updateTransaction(editing._id, payload, editing.__v);
+      else await createTransaction(payload);
       closeModal();
-    } catch (error) {
-      setErrorModal(
-        error.response?.data?.message || "Failed to save transaction."
-      );
+    } catch (requestError) {
+      setActionError(requestError.response?.data?.message || "Unable to save transaction.");
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDelete = (transaction) => {
-    setDeleteTarget(transaction);
-  };
-
-  const confirmDeleteTransaction = async () => {
+  const confirmDelete = async () => {
     if (!deleteTarget) return;
-
     try {
-      await deleteTransaction(deleteTarget._id);
+      await deleteTransaction(deleteTarget._id, deleteTarget.__v);
       setDeleteTarget(null);
-    } catch (error) {
+    } catch (requestError) {
       setDeleteTarget(null);
-      setErrorModal(
-        error.response?.data?.message || "Failed to delete transaction."
-      );
+      setActionError(requestError.response?.data?.message || "Unable to delete transaction.");
     }
   };
 
+  const clearFilters = () => {
+    setSearchInput("");
+    setSearch("");
+    setType("all");
+    setFrom("");
+    setTo("");
+    setPage(1);
+  };
+
+  const start = pagination.total === 0 ? 0 : (pagination.page - 1) * pagination.limit + 1;
+  const end = Math.min(pagination.page * pagination.limit, pagination.total);
+
   return (
     <DashboardLayout>
-      <div className="space-y-8">
-        <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-6">
+      <div className="space-y-5 md:space-y-6">
+        <header className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
           <div>
-            <h1 className="text-4xl md:text-5xl font-bold text-white">
-              Transactions
-            </h1>
-
-            <p className="text-slate-400 mt-3">
-              Track, manage, and organize your income and expenses.
-            </p>
+            <p className="eyebrow">Money</p>
+            <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-white mt-2">Transactions</h1>
+            <p className="text-sm text-slate-400 mt-2 max-w-2xl">Your ledger is server-filtered and paginated, so totals and navigation stay correct as history grows.</p>
           </div>
+          <button type="button" onClick={openCreateModal} className="action-primary self-start lg:self-auto"><Plus size={16} /> Add transaction</button>
+        </header>
 
-          <button
-            onClick={openCreateModal}
-            className="h-12 px-5 rounded-2xl bg-white text-black font-semibold flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
-          >
-            <Plus size={18} />
-            Add Transaction
-          </button>
-        </div>
+        {(error || actionError) && (
+          <div className="rounded-xl border border-red-500/20 bg-red-500/[0.07] px-4 py-3 text-sm text-red-300 flex items-center justify-between gap-3">
+            <span>{actionError || error}</span>
+            <button type="button" onClick={() => setActionError("")}><X size={16} /></button>
+          </div>
+        )}
 
-        <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-5">
-          <SummaryCard
-            title="Total Income"
-            value={formatMoney(totals.income, currency)}
-            icon={ArrowUpCircle}
-            tone="green"
-          />
-
-          <SummaryCard
-            title="Total Expenses"
-            value={formatMoney(totals.expenses, currency)}
-            icon={ArrowDownCircle}
-            tone="red"
-          />
-
-          <SummaryCard
-            title="Net Balance"
-            value={formatMoney(totals.balance, currency)}
-            icon={Wallet}
-            tone="blue"
-          />
-
-          <SummaryCard
-            title="Transactions"
-            value={totals.count}
-            icon={Wallet}
-            tone="purple"
-          />
-        </div>
-
-        <div className="rounded-[32px] border border-white/10 bg-white/[0.03] backdrop-blur-xl overflow-hidden">
-          <div className="p-5 border-b border-white/10 flex flex-col md:flex-row gap-4 md:items-center md:justify-between">
-            <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 h-12 md:w-96">
-              <Search size={18} className="text-slate-400" />
-
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search transactions..."
-                className="w-full bg-transparent outline-none text-white placeholder:text-slate-500"
-              />
+        <section className="finance-panel overflow-hidden">
+          <div className="p-4 md:p-5 border-b border-white/10 space-y-4">
+            <div className="flex flex-col xl:flex-row xl:items-center gap-3">
+              <div className="flex items-center gap-2 h-11 rounded-xl border border-white/10 bg-white/[0.025] px-3 flex-1 min-w-0">
+                <Search size={16} className="text-slate-500 shrink-0" />
+                <input value={searchInput} onChange={(e) => setSearchInput(e.target.value)} placeholder="Search transaction titles" className="w-full bg-transparent outline-none text-sm text-white placeholder:text-slate-600" />
+              </div>
+              <select value={type} onChange={(e) => { setType(e.target.value); setPage(1); }} className="form-input xl:w-40">
+                <option value="all">All types</option><option value="income">Income</option><option value="expense">Expense</option>
+              </select>
+              <div className="grid grid-cols-2 gap-2 xl:w-[310px]">
+                <input type="date" value={from} onChange={(e) => { setFrom(e.target.value); setPage(1); }} className="form-input" aria-label="From date" />
+                <input type="date" value={to} onChange={(e) => { setTo(e.target.value); setPage(1); }} className="form-input" aria-label="To date" />
+              </div>
+              <button type="button" onClick={clearFilters} className="action-secondary"><Filter size={15} /> Reset</button>
             </div>
-
-            <select
-              value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value)}
-              className="h-12 rounded-2xl border border-white/10 bg-white/[0.03] px-4 text-white outline-none select-dark"
-            >
-              <option value="all">All Types</option>
-              <option value="income">Income</option>
-              <option value="expense">Expense</option>
-            </select>
+            <div className="flex items-center justify-between gap-3 text-xs text-slate-500">
+              <span>{pagination.total} matching transaction{pagination.total === 1 ? "" : "s"}</span>
+              <span>{start}–{end} of {pagination.total}</span>
+            </div>
           </div>
 
           {loading ? (
-            <div className="p-8 space-y-4">
-              {[1, 2, 3].map((item) => (
-                <div
-                  key={item}
-                  className="h-20 rounded-3xl border border-white/10 bg-white/[0.03] animate-pulse"
-                />
-              ))}
-            </div>
-          ) : filteredTransactions.length === 0 ? (
-            <div className="p-12 text-center">
-              <div className="h-20 w-20 mx-auto rounded-[28px] bg-blue-500/10 flex items-center justify-center">
-                <Wallet className="text-blue-400" size={32} />
-              </div>
-
-              <h3 className="text-white text-2xl font-semibold mt-6">
-                No transactions found
-              </h3>
-
-              <p className="text-slate-400 mt-3">
-                Add your first transaction to start tracking your money.
-              </p>
+            <div className="p-5 space-y-3">{[1, 2, 3, 4].map((item) => <div key={item} className="h-17 rounded-xl bg-white/[0.035] animate-pulse" />)}</div>
+          ) : transactions.length === 0 ? (
+            <div className="py-16 px-6 text-center">
+              <Receipt size={30} className="text-slate-600 mx-auto" />
+              <h3 className="text-lg font-semibold text-white mt-4">No matching transactions</h3>
+              <p className="text-sm text-slate-500 mt-2">Change your filters or record a new transaction.</p>
+              <button type="button" onClick={openCreateModal} className="action-primary mt-5"><Plus size={16} /> Add transaction</button>
             </div>
           ) : (
-            <div className="divide-y divide-white/5">
-              {filteredTransactions.map((transaction) => {
-                const Icon =
-                  categoryIcons[transaction.category?.icon] || Wallet;
-
+            <div className="divide-y divide-white/[0.06]">
+              {transactions.map((transaction) => {
+                const Icon = categoryIcons[transaction.category?.icon] || Receipt;
                 return (
-                  <div
-                    key={transaction._id}
-                    className="p-5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5 hover:bg-white/[0.03] transition-all"
-                  >
-                    <div className="flex items-center gap-4 min-w-0">
-                      <div
-                        className="h-14 w-14 rounded-2xl flex items-center justify-center shrink-0"
-                        style={{
-                          backgroundColor: `${
-                            transaction.category?.color || "#3B82F6"
-                          }20`,
-                        }}
-                      >
-                        <Icon
-                          size={22}
-                          style={{
-                            color: transaction.category?.color || "#3B82F6",
-                          }}
-                        />
-                      </div>
-
-                      <div className="min-w-0">
-                        <h3 className="text-white font-semibold text-lg truncate">
-                          {transaction.title}
-                        </h3>
-
-                        <p className="text-slate-400 text-sm mt-1 truncate">
-                          {transaction.category?.name || "Uncategorized"} •{" "}
-                          {new Date(transaction.date).toLocaleDateString()}
-                        </p>
-                      </div>
+                  <article key={transaction._id} className="p-4 md:px-5 flex items-center gap-3 md:gap-4 hover:bg-white/[0.018]">
+                    <div className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${transaction.category?.color || "#3B82F6"}18` }}>
+                      <Icon size={17} style={{ color: transaction.category?.color || "#3B82F6" }} />
                     </div>
-
-                    <div className="flex items-center justify-between lg:justify-end gap-5">
-                      <p
-                        className={`money-text money-text-lg text-right max-w-[180px] font-bold ${
-                          transaction.type === "income"
-                            ? "text-emerald-400"
-                            : "text-red-400"
-                        }`}
-                      >
-                        {transaction.type === "income" ? "+" : "-"}
-                        {formatMoney(transaction.amount, currency)}
-                      </p>
-
-                      <div className="flex items-center gap-2 shrink-0">
-                        <button
-                          onClick={() => openEditModal(transaction)}
-                          className="h-10 w-10 rounded-xl border border-white/10 bg-white/[0.03] flex items-center justify-center hover:bg-white/[0.06] cursor-pointer"
-                        >
-                          <Pencil size={16} className="text-slate-300" />
-                        </button>
-
-                        <button
-                          onClick={() => handleDelete(transaction)}
-                          className="h-10 w-10 rounded-xl border border-white/10 bg-white/[0.03] flex items-center justify-center hover:bg-red-500/10 cursor-pointer"
-                        >
-                          <Trash2 size={16} className="text-red-400" />
-                        </button>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <h3 className="text-sm font-semibold text-white truncate">{transaction.title}</h3>
+                        <span className={`hidden sm:inline-flex text-[9px] uppercase tracking-wide font-semibold rounded-full px-1.5 py-0.5 ${transaction.type === "income" ? "bg-emerald-500/10 text-emerald-300" : "bg-red-500/10 text-red-300"}`}>{transaction.type}</span>
                       </div>
+                      <p className="text-xs text-slate-500 mt-1 truncate">{transaction.category?.name || "Uncategorized"} · {new Date(transaction.date).toLocaleDateString()}</p>
                     </div>
-                  </div>
+                    <p className={`money-text text-sm md:text-base font-bold text-right ${transaction.type === "income" ? "text-emerald-400" : "text-red-400"}`}>
+                      {transaction.type === "income" ? "+" : "-"}{formatMoney(transaction.amount, currency)}
+                    </p>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button type="button" onClick={() => openEditModal(transaction)} className="icon-button" aria-label={`Edit ${transaction.title}`}><Pencil size={15} /></button>
+                      <button type="button" onClick={() => setDeleteTarget(transaction)} className="icon-button text-red-400" aria-label={`Delete ${transaction.title}`}><Trash2 size={15} /></button>
+                    </div>
+                  </article>
                 );
               })}
             </div>
           )}
-        </div>
+
+          <div className="p-4 border-t border-white/10 flex items-center justify-between gap-3">
+            <button type="button" disabled={!pagination.hasPreviousPage || loading} onClick={() => setPage((value) => Math.max(value - 1, 1))} className="action-secondary disabled:opacity-40"><ChevronLeft size={15} /> Previous</button>
+            <span className="text-xs text-slate-500">Page {pagination.page} of {pagination.pages}</span>
+            <button type="button" disabled={!pagination.hasNextPage || loading} onClick={() => setPage((value) => value + 1)} className="action-secondary disabled:opacity-40">Next <ChevronRight size={15} /></button>
+          </div>
+        </section>
       </div>
 
       {modalOpen && (
         <div className="fixed inset-0 z-[999] flex items-center justify-center px-4 py-6">
-          <div
-            onClick={closeModal}
-            className="absolute inset-0 bg-black/70 backdrop-blur-md"
-          />
+          <button type="button" aria-label="Close transaction dialog" onClick={closeModal} className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+          <form onSubmit={handleSubmit} role="dialog" aria-modal="true" className="relative w-full max-w-2xl finance-panel max-h-[90vh] overflow-y-auto p-5 md:p-6">
+            <button type="button" onClick={closeModal} aria-label="Close" className="icon-button absolute right-4 top-4"><X size={16} /></button>
+            <h2 className="text-xl font-semibold text-white pr-12">{editing ? "Edit transaction" : "Add transaction"}</h2>
+            <p className="text-xs text-slate-500 mt-1.5 mb-5">Record a categorized income or expense.</p>
 
-          <form
-            onSubmit={handleSubmit}
-            className="relative w-full max-w-2xl max-h-[90vh] rounded-[32px] border border-white/10 bg-[#0B1120] shadow-2xl overflow-hidden flex flex-col"
-          >
-            <div className="shrink-0 p-6 md:p-8 border-b border-white/10">
-              <button
-                type="button"
-                onClick={closeModal}
-                className="absolute right-5 top-5 h-10 w-10 rounded-xl border border-white/10 bg-white/[0.03] flex items-center justify-center cursor-pointer hover:bg-white/[0.06]"
-              >
-                <X size={18} className="text-white" />
-              </button>
-
-              <h2 className="text-3xl font-bold text-white pr-12">
-                {editingId ? "Edit Transaction" : "Add Transaction"}
-              </h2>
-
-              <p className="text-slate-400 mt-2">
-                Record income and expenses using your saved categories.
-              </p>
+            <div className="grid sm:grid-cols-2 gap-4">
+              <Field label="Title"><input name="title" required maxLength={160} value={form.title} onChange={(e) => handleField("title", e.target.value)} className="form-input" placeholder="Groceries" /></Field>
+              <Field label="Amount"><input name="amount" required type="number" min="0.01" step="0.01" value={form.amount} onChange={(e) => handleField("amount", e.target.value)} className="form-input" placeholder="0.00" /></Field>
+              <Field label="Type"><select value={form.type} onChange={(e) => handleField("type", e.target.value)} className="form-input"><option value="expense">Expense</option><option value="income">Income</option></select></Field>
+              <Field label="Category"><select required value={form.category} onChange={(e) => handleField("category", e.target.value)} className="form-input"><option value="">Select category</option>{filteredCategories.map((category) => <option key={category._id} value={category._id}>{category.name}</option>)}</select></Field>
+              <Field label="Date"><input type="date" value={form.date} onChange={(e) => handleField("date", e.target.value)} className="form-input" /></Field>
+              <Field label="Description"><input maxLength={1000} value={form.description} onChange={(e) => handleField("description", e.target.value)} className="form-input" placeholder="Optional note" /></Field>
             </div>
-
-            <div className="flex-1 overflow-y-auto p-6 md:p-8">
-              <div className="grid md:grid-cols-2 gap-5">
-                <Field label="Title">
-                  <input
-                    name="title"
-                    value={form.title}
-                    onChange={handleChange}
-                    required
-                    placeholder="e.g. Groceries"
-                    className="form-input"
-                  />
-                </Field>
-
-                <Field label="Amount">
-                  <input
-                    name="amount"
-                    type="number"
-                    value={form.amount}
-                    onChange={handleChange}
-                    required
-                    min="0"
-                    placeholder="0.00"
-                    className="form-input"
-                  />
-                </Field>
-
-                <Field label="Type">
-                  <select
-                    name="type"
-                    value={form.type}
-                    onChange={handleChange}
-                    className="form-input select-dark"
-                  >
-                    <option value="expense">Expense</option>
-                    <option value="income">Income</option>
-                  </select>
-                </Field>
-
-                <Field label="Category">
-                  <select
-                    name="category"
-                    value={form.category}
-                    onChange={handleChange}
-                    required
-                    className="form-input select-dark"
-                  >
-                    <option value="">Select category</option>
-
-                    {filteredCategories.map((category) => (
-                      <option key={category._id} value={category._id}>
-                        {category.name}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-
-                <Field label="Date">
-                  <input
-                    name="date"
-                    type="date"
-                    value={form.date}
-                    onChange={handleChange}
-                    className="form-input"
-                  />
-                </Field>
-
-                <Field label="Description">
-                  <input
-                    name="description"
-                    value={form.description}
-                    onChange={handleChange}
-                    placeholder="Optional note"
-                    className="form-input"
-                  />
-                </Field>
-              </div>
-            </div>
-
-            <div className="shrink-0 p-6 md:p-8 border-t border-white/10 bg-[#0B1120]">
-              <button
-                disabled={saving}
-                className="w-full h-13 rounded-2xl bg-white text-black font-semibold hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer disabled:opacity-60"
-              >
-                {saving
-                  ? "Saving..."
-                  : editingId
-                    ? "Save Changes"
-                    : "Save Transaction"}
-              </button>
-            </div>
+            <button type="submit" disabled={saving} className="action-primary w-full mt-5 disabled:opacity-50">{saving ? "Saving…" : editing ? "Save changes" : "Add transaction"}</button>
           </form>
         </div>
       )}
@@ -464,59 +256,16 @@ const Transactions = () => {
       <ConfirmModal
         open={Boolean(deleteTarget)}
         title="Delete transaction?"
-        message={`This will permanently remove "${deleteTarget?.title}" from your financial records.`}
+        message={`Permanently remove "${deleteTarget?.title}" from your ledger?`}
         confirmText="Delete"
         danger
         onClose={() => setDeleteTarget(null)}
-        onConfirm={confirmDeleteTransaction}
-      />
-
-      <ConfirmModal
-        open={Boolean(errorModal)}
-        title="Something went wrong"
-        message={errorModal || ""}
-        confirmText="Close"
-        onClose={() => setErrorModal(null)}
-        onConfirm={() => setErrorModal(null)}
+        onConfirm={confirmDelete}
       />
     </DashboardLayout>
   );
 };
 
-const SummaryCard = ({ title, value, icon: Icon, tone }) => {
-  const tones = {
-    green: "bg-emerald-500/10 text-emerald-400",
-    red: "bg-red-500/10 text-red-400",
-    blue: "bg-blue-500/10 text-blue-400",
-    purple: "bg-purple-500/10 text-purple-400",
-  };
-
-  return (
-    <div className="rounded-[28px] border border-white/10 bg-white/[0.03] backdrop-blur-xl p-6 min-w-0">
-      <div
-        className={`h-12 w-12 rounded-2xl flex items-center justify-center ${
-          tones[tone] || tones.blue
-        }`}
-      >
-        <Icon size={22} />
-      </div>
-
-      <p className="text-slate-400 text-sm mt-5">{title}</p>
-
-      <h3 className="money-text money-text-xl font-bold text-white mt-2">
-        {value}
-      </h3>
-    </div>
-  );
-};
-
-const Field = ({ label, children }) => {
-  return (
-    <div>
-      <label className="text-sm text-slate-300">{label}</label>
-      <div className="mt-2">{children}</div>
-    </div>
-  );
-};
+const Field = ({ label, children }) => <label className="block"><span className="block text-xs font-medium text-slate-400 mb-1.5">{label}</span>{children}</label>;
 
 export default Transactions;

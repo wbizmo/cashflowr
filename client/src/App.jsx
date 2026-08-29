@@ -8,11 +8,14 @@ import Transactions from "./pages/Transactions";
 import Categories from "./pages/Categories";
 import Analytics from "./pages/Analytics";
 import Budgets from "./pages/Budgets";
+import Goals from "./pages/Goals";
+import Recurring from "./pages/Recurring";
 import Notifications from "./pages/Notifications";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
-
 import ProtectedRoute from "./routes/ProtectedRoute";
+
+const Protected = ({ children }) => <ProtectedRoute>{children}</ProtectedRoute>;
 
 function App() {
   return (
@@ -20,15 +23,15 @@ function App() {
       <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
-
-      <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-      <Route path="/transactions" element={<ProtectedRoute><Transactions /></ProtectedRoute>} />
-      <Route path="/categories" element={<ProtectedRoute><Categories /></ProtectedRoute>} />
-      <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
-      <Route path="/budgets" element={<ProtectedRoute><Budgets /></ProtectedRoute>} />
-      <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
-      <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-
+      <Route path="/dashboard" element={<Protected><Dashboard /></Protected>} />
+      <Route path="/transactions" element={<Protected><Transactions /></Protected>} />
+      <Route path="/budgets" element={<Protected><Budgets /></Protected>} />
+      <Route path="/goals" element={<Protected><Goals /></Protected>} />
+      <Route path="/recurring" element={<Protected><Recurring /></Protected>} />
+      <Route path="/analytics" element={<Protected><Analytics /></Protected>} />
+      <Route path="/categories" element={<Protected><Categories /></Protected>} />
+      <Route path="/notifications" element={<Protected><Notifications /></Protected>} />
+      <Route path="/settings" element={<Protected><Settings /></Protected>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
