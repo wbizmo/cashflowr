@@ -182,19 +182,23 @@ export const postRecurringItem = async (req, res) => {
     const finalRecurring = updatedRecurring || await Recurring.findOne({ _id: recurring._id, user: req.user._id }).populate("category");
     if (!transaction.category?.name) transaction = await Transaction.findById(transaction._id).populate("category");
 
-    try {
-      await Notification.create({
-        user: req.user._id,
-        type: "transaction_created",
-        title: "Recurring item posted",
-        message: `${recurring.title} was added to your transactions.`,
-        metadata: { transactionId: transaction._id, recurringId: recurring._id, amount: recurring.amount },
-      });
-    } catch (error) {
-      console.error("Failed to create recurring notification", error);
+    if (updatedRecurring) {
+      try {
+        await Notification.create({
+          user: req.user._id,
+          type: "transaction_created",
+          title: "Recurring item posted",
+          message: `${recurring.title} was added to your transactions.`,
+          metadata: { transactionId: transaction._id, recurringId: recurring._id, amount: recurring.amount },
+        });
+      } catch (error) {
+        console.error("Failed to create recurring notification", error);
+      }
+    } else {
+      res.setHeader("Idempotent-Replayed", "true");
     }
 
-    return res.status(201).json({ success: true, transaction, recurring: finalRecurring });
+    return res.status(updatedRecurring ? 201 : 200).json({ success: true, transaction, recurring: finalRecurring });
   } catch (error) {
     return sendError(res, error, req);
   }
@@ -203,8 +207,17 @@ export const postRecurringItem = async (req, res) => {
 export const deleteRecurringItem = async (req, res) => {
   try {
     if (!isValidId(req.params.id)) return res.status(404).json({ success: false, message: "Recurring item not found" });
-    const recurring = await Recurring.findOneAndDelete({ _id: req.params.id, user: req.user._id });
-    if (!recurring) return res.status(404).json({ success: false, message: "Recurring item not found" });
+    const current = await Recurring.findOne({ _id: req.params.id, user: req.user._id });
+    if (!current) return res.status(404).json({ success: false, message: "Recurring item not found" });
+
+    const expected = parseExpectedVersion(req);
+    if (Number.isNaN(expected)) return res.status(400).json({ success: false, message: "Invalid version precondition" });
+    if (expected !== null && expected !== current.__v) {
+      return res.status(409).json({ success: false, message: "Recurring item changed since you opened it. Refresh and try again." });
+    }
+
+    const recurring = await Recurring.findOneAndDelete({ _id: current._id, user: req.user._id, __v: current.__v });
+    if (!recurring) return res.status(409).json({ success: false, message: "Recurring item changed before it could be deleted" });
     return res.json({ success: true, message: "Recurring item deleted" });
   } catch (error) {
     return sendError(res, error, req);
