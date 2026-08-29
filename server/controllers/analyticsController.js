@@ -1,149 +1,135 @@
 import Transaction from "../models/Transaction.js";
 import Budget from "../models/Budget.js";
+import Category from "../models/Category.js";
+import { sendError } from "../middleware/errorMiddleware.js";
+import { parseDateRange } from "../utils/request.js";
+
+const monthKey = (year, month) => `${year}-${String(month).padStart(2, "0")}`;
 
 export const getAnalyticsSummary = async (req, res) => {
   try {
+    const range = parseDateRange(req.query, 60);
+    if (!range) {
+      return res.status(400).json({ success: false, message: "Invalid analytics range. Use a range of 60 months or less." });
+    }
+
     const userId = req.user._id;
+    const now = new Date();
+    const currentMonth = now.getUTCMonth() + 1;
+    const currentYear = now.getUTCFullYear();
+    const monthStart = new Date(Date.UTC(currentYear, currentMonth - 1, 1));
+    const monthEnd = new Date(Date.UTC(currentYear, currentMonth, 1));
 
-    const transactions = await Transaction.find({ user: userId })
-      .populate("category")
-      .sort({ date: 1 });
+    const [facets, budgets, currentSpendRows] = await Promise.all([
+      Transaction.aggregate([
+        { $match: { user: userId, date: { $gte: range.from, $lt: range.to } } },
+        {
+          $facet: {
+            totals: [
+              { $group: { _id: "$type", total: { $sum: "$amount" }, count: { $sum: 1 } } },
+            ],
+            categoryBreakdown: [
+              { $match: { type: "expense" } },
+              { $group: { _id: "$category", value: { $sum: "$amount" } } },
+              { $sort: { value: -1 } },
+            ],
+            monthly: [
+              {
+                $group: {
+                  _id: {
+                    year: { $year: { date: "$date", timezone: "UTC" } },
+                    month: { $month: { date: "$date", timezone: "UTC" } },
+                    type: "$type",
+                  },
+                  total: { $sum: "$amount" },
+                },
+              },
+              { $sort: { "_id.year": 1, "_id.month": 1 } },
+            ],
+          },
+        },
+      ]),
+      Budget.find({ user: userId, month: currentMonth, year: currentYear }).lean(),
+      Transaction.aggregate([
+        {
+          $match: {
+            user: userId,
+            type: "expense",
+            date: { $gte: monthStart, $lt: monthEnd },
+          },
+        },
+        { $group: { _id: "$category", total: { $sum: "$amount" } } },
+      ]),
+    ]);
 
-    const totalIncome = transactions
-      .filter((item) => item.type === "income")
-      .reduce((sum, item) => sum + item.amount, 0);
+    const data = facets[0] || { totals: [], categoryBreakdown: [], monthly: [] };
+    const totals = Object.fromEntries(data.totals.map((row) => [row._id, row]));
+    const totalIncome = totals.income?.total || 0;
+    const totalExpenses = totals.expense?.total || 0;
+    const incomeCount = totals.income?.count || 0;
+    const expenseCount = totals.expense?.count || 0;
+    const balance = Math.round((totalIncome - totalExpenses + Number.EPSILON) * 100) / 100;
+    const savingsRate = totalIncome > 0 ? Math.round(((totalIncome - totalExpenses) / totalIncome) * 100) : 0;
 
-    const totalExpenses = transactions
-      .filter((item) => item.type === "expense")
-      .reduce((sum, item) => sum + item.amount, 0);
-
-    const balance = totalIncome - totalExpenses;
-
-    const savingsRate =
-      totalIncome > 0
-        ? Math.round(((totalIncome - totalExpenses) / totalIncome) * 100)
-        : 0;
-
-    const incomeTransactions = transactions.filter(
-      (item) => item.type === "income"
-    );
-
-    const expenseTransactions = transactions.filter(
-      (item) => item.type === "expense"
-    );
-
-    const categoryMap = {};
-
-    expenseTransactions.forEach((item) => {
-      const categoryName = item.category?.name || "Uncategorized";
-      const categoryColor = item.category?.color || "#3B82F6";
-
-      if (!categoryMap[categoryName]) {
-        categoryMap[categoryName] = {
-          name: categoryName,
-          value: 0,
-          color: categoryColor,
-        };
-      }
-
-      categoryMap[categoryName].value += item.amount;
+    const categoryIds = data.categoryBreakdown.map((row) => row._id).filter(Boolean);
+    const categories = categoryIds.length
+      ? await Category.find({ user: userId, _id: { $in: categoryIds } }).lean()
+      : [];
+    const categoriesById = new Map(categories.map((category) => [String(category._id), category]));
+    const categoryBreakdown = data.categoryBreakdown.map((row) => {
+      const category = categoriesById.get(String(row._id));
+      return {
+        categoryId: row._id,
+        name: category?.name || "Uncategorized",
+        value: row.value,
+        color: category?.color || "#64748B",
+      };
     });
 
-    const categoryBreakdown = Object.values(categoryMap).sort(
-      (a, b) => b.value - a.value
-    );
+    const monthlyMap = new Map();
+    for (const row of data.monthly) {
+      const key = monthKey(row._id.year, row._id.month);
+      const entry = monthlyMap.get(key) || { month: key, income: 0, expenses: 0, balance: 0 };
+      if (row._id.type === "income") entry.income = row.total;
+      if (row._id.type === "expense") entry.expenses = row.total;
+      entry.balance = Math.round((entry.income - entry.expenses + Number.EPSILON) * 100) / 100;
+      monthlyMap.set(key, entry);
+    }
+    const monthlyTrend = [...monthlyMap.values()].sort((a, b) => a.month.localeCompare(b.month));
 
-    const monthlyMap = {};
+    const totalBudgetLimit = budgets.reduce((sum, budget) => sum + budget.amount, 0);
+    const budgetCategoryIds = new Set(budgets.map((budget) => String(budget.category)));
+    const currentBudgetSpend = currentSpendRows
+      .filter((row) => budgetCategoryIds.has(String(row._id)))
+      .reduce((sum, row) => sum + row.total, 0);
+    const budgetUtilization = totalBudgetLimit > 0 ? Math.round((currentBudgetSpend / totalBudgetLimit) * 100) : 0;
+    const averageExpense = expenseCount > 0
+      ? Math.round((totalExpenses / expenseCount + Number.EPSILON) * 100) / 100
+      : 0;
 
-    transactions.forEach((item) => {
-      const date = new Date(item.date);
-      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
-        2,
-        "0"
-      )}`;
-
-      if (!monthlyMap[key]) {
-        monthlyMap[key] = {
-          month: key,
-          income: 0,
-          expenses: 0,
-          balance: 0,
-        };
-      }
-
-      if (item.type === "income") {
-        monthlyMap[key].income += item.amount;
-      }
-
-      if (item.type === "expense") {
-        monthlyMap[key].expenses += item.amount;
-      }
-
-      monthlyMap[key].balance =
-        monthlyMap[key].income - monthlyMap[key].expenses;
-    });
-
-    const monthlyTrend = Object.values(monthlyMap).sort((a, b) =>
-      a.month.localeCompare(b.month)
-    );
-
-    const currentMonth = new Date().getMonth() + 1;
-    const currentYear = new Date().getFullYear();
-
-    const budgets = await Budget.find({
-      user: userId,
-      month: currentMonth,
-      year: currentYear,
-    }).populate("category");
-
-    const totalBudgetLimit = budgets.reduce(
-      (sum, item) => sum + item.amount,
-      0
-    );
-
-    const budgetUtilization =
-      totalBudgetLimit > 0
-        ? Math.round((totalExpenses / totalBudgetLimit) * 100)
-        : 0;
-
-    const highestExpenseCategory = categoryBreakdown[0] || null;
-
-    const averageExpense =
-      expenseTransactions.length > 0
-        ? Math.round(totalExpenses / expenseTransactions.length)
-        : 0;
-
-    res.json({
+    return res.json({
       success: true,
       analytics: {
+        range: { from: range.from, to: range.to },
         balance,
         totalIncome,
         totalExpenses,
         savingsRate,
-        transactionCount: transactions.length,
-        incomeCount: incomeTransactions.length,
-        expenseCount: expenseTransactions.length,
+        transactionCount: incomeCount + expenseCount,
+        incomeCount,
+        expenseCount,
         averageExpense,
         budgetUtilization,
-        highestExpenseCategory,
+        highestExpenseCategory: categoryBreakdown[0] || null,
         categoryBreakdown,
         monthlyTrend,
         incomeVsExpense: [
-          {
-            name: "Income",
-            value: totalIncome,
-          },
-          {
-            name: "Expenses",
-            value: totalExpenses,
-          },
+          { name: "Income", value: totalIncome },
+          { name: "Expenses", value: totalExpenses },
         ],
       },
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    return sendError(res, error, req);
   }
 };
