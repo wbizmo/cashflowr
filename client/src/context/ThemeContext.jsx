@@ -1,20 +1,15 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useLayoutEffect, useState } from "react";
+
+import { applyThemeToRoot, persistTheme, readStoredTheme } from "./theme";
 
 const ThemeContext = createContext();
 
 export const ThemeProvider = ({ children }) => {
-  const [theme, setTheme] = useState(() => {
-    return localStorage.getItem("cashflowr_theme") || "dark";
-  });
+  const [theme, setTheme] = useState(readStoredTheme);
 
-  useEffect(() => {
-    localStorage.setItem("cashflowr_theme", theme);
-
-    if (theme === "light") {
-      document.documentElement.classList.add("light");
-    } else {
-      document.documentElement.classList.remove("light");
-    }
+  useLayoutEffect(() => {
+    const normalizedTheme = applyThemeToRoot(theme);
+    persistTheme(normalizedTheme);
   }, [theme]);
 
   const toggleTheme = () => {
