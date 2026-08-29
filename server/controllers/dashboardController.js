@@ -2,6 +2,8 @@ import Transaction from "../models/Transaction.js";
 import Budget from "../models/Budget.js";
 import Notification from "../models/Notification.js";
 import Category from "../models/Category.js";
+import Goal from "../models/Goal.js";
+import Recurring from "../models/Recurring.js";
 import { sendError } from "../middleware/errorMiddleware.js";
 
 const monthKey = (year, month) => `${year}-${String(month).padStart(2, "0")}`;
@@ -15,8 +17,19 @@ export const getDashboardSummary = async (req, res) => {
     const monthStart = new Date(Date.UTC(currentYear, currentMonth - 1, 1));
     const monthEnd = new Date(Date.UTC(currentYear, currentMonth, 1));
     const trendStart = new Date(Date.UTC(currentYear, currentMonth - 6, 1));
+    const forecastEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 
-    const [totalsRows, recentTransactions, budgets, unreadNotifications, trendRows, spendRows] = await Promise.all([
+    const [
+      totalsRows,
+      recentTransactions,
+      budgets,
+      unreadNotifications,
+      trendRows,
+      spendRows,
+      goalRows,
+      goalSummaryRows,
+      upcomingRecurring,
+    ] = await Promise.all([
       Transaction.aggregate([
         { $match: { user: userId } },
         { $group: { _id: "$type", total: { $sum: "$amount" }, count: { $sum: 1 } } },
@@ -55,6 +68,31 @@ export const getDashboardSummary = async (req, res) => {
         { $group: { _id: "$category", total: { $sum: "$amount" } } },
         { $sort: { total: -1 } },
       ]),
+      Goal.find({ user: userId, status: { $ne: "archived" } })
+        .sort({ status: 1, targetDate: 1, createdAt: -1 })
+        .limit(3)
+        .lean(),
+      Goal.aggregate([
+        { $match: { user: userId, status: { $ne: "archived" } } },
+        {
+          $group: {
+            _id: null,
+            target: { $sum: "$targetAmount" },
+            saved: { $sum: "$currentAmount" },
+            active: { $sum: { $cond: [{ $eq: ["$status", "active"] }, 1, 0] } },
+            completed: { $sum: { $cond: [{ $eq: ["$status", "completed"] }, 1, 0] } },
+          },
+        },
+      ]),
+      Recurring.find({
+        user: userId,
+        status: "active",
+        nextDueDate: { $gte: now, $lte: forecastEnd },
+      })
+        .populate("category")
+        .sort({ nextDueDate: 1 })
+        .limit(5)
+        .lean(),
     ]);
 
     const totals = Object.fromEntries(totalsRows.map((row) => [row._id, row]));
@@ -117,6 +155,20 @@ export const getDashboardSummary = async (req, res) => {
           ? "watch"
           : "negative";
 
+    const goalSummary = goalSummaryRows[0] || { target: 0, saved: 0, active: 0, completed: 0 };
+    const goals = goalRows.map((goal) => ({
+      ...goal,
+      percentage: goal.targetAmount > 0 ? Math.min(Math.round((goal.currentAmount / goal.targetAmount) * 100), 100) : 0,
+      remaining: Math.max(goal.targetAmount - goal.currentAmount, 0),
+    }));
+    const recurringIncome = upcomingRecurring
+      .filter((item) => item.type === "income")
+      .reduce((sum, item) => sum + item.amount, 0);
+    const recurringExpenses = upcomingRecurring
+      .filter((item) => item.type === "expense")
+      .reduce((sum, item) => sum + item.amount, 0);
+    const projectedBalance30d = Math.round((balance + recurringIncome - recurringExpenses + Number.EPSILON) * 100) / 100;
+
     return res.json({
       success: true,
       summary: {
@@ -137,7 +189,19 @@ export const getDashboardSummary = async (req, res) => {
           balance: currentFlow.balance,
           spendRatio,
         },
-        budgetHealth: { limit: budgetLimit, spent: budgetSpent, utilization: budgetUtilization, atRisk: budgetsAtRisk },
+        budgetHealth: {
+          limit: budgetLimit,
+          spent: budgetSpent,
+          utilization: budgetUtilization,
+          atRisk: budgetsAtRisk,
+        },
+        goals: { ...goalSummary, items: goals },
+        upcomingRecurring,
+        forecast30d: {
+          recurringIncome,
+          recurringExpenses,
+          projectedBalance: projectedBalance30d,
+        },
         health,
       },
     });

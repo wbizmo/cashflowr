@@ -10,6 +10,8 @@ import categoryRoutes from "./routes/categoryRoutes.js";
 import budgetRoutes from "./routes/budgetRoutes.js";
 import dashboardRoutes from "./routes/dashboardRoutes.js";
 import analyticsRoutes from "./routes/analyticsRoutes.js";
+import goalRoutes from "./routes/goalRoutes.js";
+import recurringRoutes from "./routes/recurringRoutes.js";
 import {
   apiRateLimiter,
   requestContext,
@@ -39,8 +41,8 @@ app.use(
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "Idempotency-Key", "X-Request-Id"],
-    exposedHeaders: ["X-Request-Id"],
+    allowedHeaders: ["Content-Type", "Authorization", "Idempotency-Key", "If-Match", "X-Request-Id"],
+    exposedHeaders: ["X-Request-Id", "Idempotent-Replayed"],
   })
 );
 app.use(express.json({ limit: "256kb" }));
@@ -63,6 +65,8 @@ app.use("/api/categories", categoryRoutes);
 app.use("/api/budgets", budgetRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/analytics", analyticsRoutes);
+app.use("/api/goals", goalRoutes);
+app.use("/api/recurring", recurringRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
