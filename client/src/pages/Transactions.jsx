@@ -46,6 +46,12 @@ const Transactions = () => {
     deleteTransaction,
   } = useTransactions({ page, limit: 15, search, type, from, to });
 
+  const openCreateModal = () => {
+    setEditing(null);
+    setForm({ ...initialForm, date: new Date().toISOString().slice(0, 10) });
+    setModalOpen(true);
+  };
+
   useEffect(() => {
     const timer = setTimeout(() => {
       setSearch(searchInput.trim());
@@ -55,24 +61,18 @@ const Transactions = () => {
   }, [searchInput]);
 
   useEffect(() => {
-    if (searchParams.get("new") === "1") {
-      openCreateModal();
-      const next = new URLSearchParams(searchParams);
-      next.delete("new");
-      setSearchParams(next, { replace: true });
-    }
-  }, []);
+    if (searchParams.get("new") !== "1") return;
+
+    openCreateModal();
+    const next = new URLSearchParams(searchParams);
+    next.delete("new");
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   const filteredCategories = useMemo(
     () => categories.filter((category) => category.type === form.type),
     [categories, form.type]
   );
-
-  const openCreateModal = () => {
-    setEditing(null);
-    setForm({ ...initialForm, date: new Date().toISOString().slice(0, 10) });
-    setModalOpen(true);
-  };
 
   const openEditModal = (transaction) => {
     setEditing(transaction);
