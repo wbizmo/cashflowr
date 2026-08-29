@@ -1,49 +1,59 @@
 import User from "../models/User.js";
+import { sendError } from "../middleware/errorMiddleware.js";
+import { cleanText, normalizeEmail } from "../utils/validation.js";
+
+const allowedCurrencies = new Set(["USD", "GBP", "EUR", "NGN"]);
 
 export const updateUserSettings = async (req, res) => {
   try {
-    const { firstName, lastName, currency, avatar } = req.body;
+    const updates = {};
 
-    const allowedCurrencies = ["USD", "GBP", "EUR", "NGN"];
-
-    if (currency && !allowedCurrencies.includes(currency)) {
-      return res.status(400).json({
-        success: false,
-        message: "Unsupported currency selected",
-      });
+    if (Object.prototype.hasOwnProperty.call(req.body, "firstName")) {
+      updates.firstName = cleanText(req.body.firstName, 80);
+      if (!updates.firstName) return res.status(400).json({ success: false, message: "First name is required" });
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, "lastName")) {
+      updates.lastName = cleanText(req.body.lastName, 80);
+      if (!updates.lastName) return res.status(400).json({ success: false, message: "Last name is required" });
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, "currency")) {
+      if (!allowedCurrencies.has(req.body.currency)) {
+        return res.status(400).json({ success: false, message: "Unsupported currency selected" });
+      }
+      updates.currency = req.body.currency;
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, "avatar")) {
+      if (typeof req.body.avatar !== "string" || req.body.avatar.length > 2048) {
+        return res.status(400).json({ success: false, message: "Invalid avatar value" });
+      }
+      updates.avatar = req.body.avatar.trim();
     }
 
-    const user = await User.findById(req.user._id);
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-      });
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ success: false, message: "No supported settings to update" });
     }
 
-    user.firstName = firstName || user.firstName;
-    user.lastName = lastName || user.lastName;
-    user.currency = currency || user.currency;
-    user.avatar = avatar ?? user.avatar;
+    const updatedUser = await User.findOneAndUpdate(
+      { _id: req.user._id, status: "active" },
+      { $set: updates },
+      { new: true, runValidators: true }
+    );
 
-    const updatedUser = await user.save();
-
-    res.json({
+    if (!updatedUser) return res.status(404).json({ success: false, message: "User not found" });
+    return res.json({
       success: true,
       user: {
         id: updatedUser._id,
         firstName: updatedUser.firstName,
         lastName: updatedUser.lastName,
-        email: updatedUser.email,
+        email: normalizeEmail(updatedUser.email),
         currency: updatedUser.currency,
         avatar: updatedUser.avatar,
+        role: updatedUser.role,
       },
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    if (error?.name === "ValidationError") return res.status(400).json({ success: false, message: "Invalid settings" });
+    return sendError(res, error, req);
   }
 };

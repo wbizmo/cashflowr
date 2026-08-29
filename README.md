@@ -1,611 +1,130 @@
 # CashFlowr
 
-CashFlowr is a personal finance management application that enables users to record income and expenses, organize transactions into categories, create budgets, monitor spending activity, and view financial summaries through interactive dashboards and analytics.
+CashFlowr is a production-oriented personal finance workspace for tracking money, planning recurring cash flow, managing category budgets, building savings goals, and understanding financial trends from one responsive interface.
 
-The application includes secure authentication, user-specific financial data isolation, budget tracking, transaction management, category management, activity notifications, currency preferences, and light/dark theme support.
+**Current release:** `v2.0.0`  
+**Frontend:** https://cashflowr-orpin.vercel.app  
+**API:** https://cashflowr-api-81rd.onrender.com  
 
-Built with React, Node.js, Express, MongoDB, and Tailwind CSS, CashFlowr provides a complete environment for managing personal finances from a single dashboard.
+## What changed in v2.0.0
 
----
+The v2 overhaul moves CashFlowr beyond basic CRUD finance tracking. The application now includes stronger authentication and authorization controls, owner-scoped object access, concurrency protection, idempotent financial writes, server-side pagination/filtering, optimized analytics, savings goals, recurring cash-flow planning, a denser finance workspace UI, and CI gates for both the frontend and API.
 
-# Live Application
+## Product capabilities
 
-Frontend / App Demo:
+- Income and expense ledger with categories, notes and dates
+- Server-side transaction search, filtering and pagination
+- Monthly category budgets with spend, remaining balance and over-budget state
+- Savings goals with progress, atomic contributions, completion and archival
+- Recurring income and expenses with weekly, monthly, quarterly and yearly schedules
+- Idempotent posting of recurring occurrences into the transaction ledger
+- Six-month income/expense/balance trend
+- Current-month expense-category breakdown
+- Savings rate, budget health and 30-day projected balance
+- Notifications with unread state and activity metadata
+- USD, GBP, EUR and NGN display preferences
+- Responsive desktop/mobile navigation and light/dark themes
 
-https://cashflowr-orpin.vercel.app
+## Security model
 
-Backend API:
+CashFlowr uses bearer JWT authentication backed by server-side account state.
 
-https://cashflowr-api-81rd.onrender.com
+Production hardening includes:
 
-GitHub Repository:
+- Short-lived signed JWTs
+- Server-side token-version revocation and logout invalidation
+- Active-account enforcement
+- Generic credential failures
+- Registration/login throttling plus global API throttling
+- Request IDs for correlation
+- Bounded request bodies
+- Security response headers
+- Explicit CORS allowlisting
+- Centralized safe error responses
+- Owner-scoped resource queries for BOLA protection
+- Mutation-field allowlists to prevent mass assignment
+- RBAC authorization primitive with `user`, `support` and `admin` roles
+- Roles and account state excluded from self-service profile mutation
 
-https://github.com/wbizmo/cashflowr
+A resource identifier alone is never considered authorization. User-owned transactions, categories, budgets, notifications, goals and recurring items are always queried with the authenticated user's ID.
 
----
+## Financial integrity and concurrency
 
-## Render Backend Notice
+Finance applications need stronger guarantees than ordinary CRUD applications. CashFlowr v2 adds:
 
-The backend API is hosted on Render's free service tier. Because of this, the backend may temporarily sleep after a period of inactivity.
+- Per-user transaction idempotency keys
+- Duplicate-request replay instead of duplicate ledger rows
+- Compare-and-set/version checks for mutable resources
+- Conflict responses for stale concurrent updates
+- Atomic savings-goal contributions
+- Deterministic idempotency keys for recurring occurrences
+- Single-winner recurring schedule advancement and notification side effects
+- Category dependency protection before deletion/type changes
+- Positive-value and two-decimal money normalization
+- Database indexes for common per-user/date access paths
 
-If the live app appears static, login/register takes too long, or API requests do not respond immediately, open the backend API URL first:
+Existing production monetary data remains stored as Mongo numeric values to avoid an unsafe one-step data migration. A future integer-minor-unit or Decimal128 migration should be performed separately with reconciliation.
 
-https://cashflowr-api-81rd.onrender.com
+## Performance architecture
 
-Wait until the API wakes up and displays a response, then return to the frontend application and try again:
+The v2 API avoids loading an entire financial history into Node for dashboard calculations.
 
-https://cashflowr-orpin.vercel.app
-
-# Application Screenshots
-
-![](./assets/528_1x_shots_so.png)
-
----
-
-![](./assets/215_1x_shots_so.png)
-
----
-
-![](./assets/261_1x_shots_so.png)
-
----
-
-![](./assets/65_1x_shots_so.png)
-
----
-
-# Author
-
-Ashibuogwu Williams
-
----
-
-# Overview
-
-CashFlowr centralizes day-to-day financial management into a single application.
-
-Users can:
-
-- Track income
-- Track expenses
-- Categorize transactions
-- Create monthly budgets
-- Monitor budget utilization
-- Review financial activity
-- View financial analytics
-- Receive transaction notifications
-- Change currency preferences
-- Switch between light and dark themes
-
-All financial records are linked to the authenticated user, ensuring complete separation of data between accounts.
-
----
-
-# Technology Stack
+- Dashboard totals and trends are calculated with MongoDB aggregation
+- Analytics use bounded aggregate queries
+- Budget spend enrichment uses one grouped aggregation rather than one query per budget
+- Transaction history is paginated and filterable at the API boundary
+- Notifications are paginated
+- Hot user/date/category query paths are indexed
 
 ## Frontend
 
-- React
-- React Router DOM
+- React 19
+- React Router
+- Vite
 - Tailwind CSS
-- Axios
 - Recharts
+- Axios
 - Lucide React
 - Framer Motion
-- React Context API
+- Context-based authentication/theme/UI state
+
+The authenticated shell uses one navigation definition across desktop and mobile, route-aware page titles, explicit loading/error/empty states, keyboard focus styles and reduced-motion support.
+
+### Application routes
+
+- `/dashboard`
+- `/transactions`
+- `/categories`
+- `/budgets`
+- `/goals`
+- `/recurring`
+- `/analytics`
+- `/notifications`
+- `/settings`
 
 ## Backend
 
-- Node.js
-- Express.js
+- Node.js 22
+- Express 5
 - MongoDB
-- Mongoose
-- JSON Web Tokens (JWT)
+- Mongoose 9
+- JWT
 - bcryptjs
-- dotenv
-- cors
 
----
+The Express app is separated from process startup so middleware and routes can be tested without binding a production port. Startup includes database connection handling and graceful shutdown behavior.
 
-# Application Pages
+## API
 
-## Landing Page
-
-Public entry point for the application.
-
-Features:
-
-- Application overview
-- Feature highlights
-- Authentication navigation
-- Responsive layout
-- Theme-aware styling
-
----
-
-## Login
-
-Allows existing users to authenticate.
-
-Features:
-
-- Email authentication
-- Password authentication
-- Validation handling
-- JWT generation
-- Secure login workflow
-
----
-
-## Register
-
-Allows new users to create accounts.
-
-Features:
-
-- First name
-- Last name
-- Email
-- Password
-- Secure password hashing
-- Automatic login after registration
-
----
-
-## Dashboard
-
-Central overview of financial activity.
-
-Displays:
-
-- Current Balance
-- Total Income
-- Total Expenses
-- Savings Rate
-- Budget Snapshot
-- Recent Transactions
-- Financial Charts
-- Activity Summary
-
-Dashboard data is generated from the user's actual transactions and budgets.
-
----
-
-## Transactions
-
-Complete transaction management system.
-
-Users can:
-
-- Create transactions
-- Edit transactions
-- Delete transactions
-- Search transactions
-- Filter transactions
-- View transaction history
-
-### Transaction Fields
-
-| Field | Description |
-|---------|-------------|
-| Title | Transaction title |
-| Amount | Monetary value |
-| Type | Income or Expense |
-| Category | Selected category |
-| Description | Optional note |
-| Date | Transaction date |
-
-### Transaction Types
-
-#### Income
-
-Examples:
-
-- Salary
-- Business Revenue
-- Freelance Payments
-- Investments
-
-#### Expense
-
-Examples:
-
-- Food
-- Transportation
-- Rent
-- Utilities
-- Entertainment
-
-### Validation
-
-The system verifies:
-
-- Category exists
-- Category belongs to user
-- Category type matches transaction type
-
-Invalid combinations are rejected by the API.
-
----
-
-## Categories
-
-User-defined financial classifications.
-
-Categories are used throughout:
-
-- Transactions
-- Budgets
-- Dashboard Analytics
-- Spending Breakdown Charts
-
-### Category Features
-
-- Create category
-- Edit category
-- Delete category
-- Assign color
-- Assign icon
-- Income categories
-- Expense categories
-
-### Category Fields
-
-| Field | Description |
-|---------|-------------|
-| Name | Category name |
-| Type | Income or Expense |
-| Color | Category color |
-| Icon | Category icon |
-
----
-
-## Budgets
-
-Monthly budget planning and monitoring.
-
-Users can create spending limits for specific categories and monitor progress against those limits.
-
-### Budget Features
-
-- Create budget
-- Edit budget
-- Delete budget
-- Monthly budgeting
-- Category budgeting
-- Spending tracking
-- Remaining balance calculation
-- Utilization percentage calculation
-
-### Budget Metrics
-
-Each budget displays:
-
-- Budget Amount
-- Amount Spent
-- Remaining Amount
-- Usage Percentage
-
-### Example
-
-```text
-Budget: ₦100,000
-Spent: ₦35,000
-Remaining: ₦65,000
-Used: 35%
-```
-
----
-
-## Analytics
-
-Financial analytics and reporting dashboard.
-
-Analytics are calculated dynamically from transaction and budget records.
-
-### Available Metrics
-
-- Current Balance
-- Total Income
-- Total Expenses
-- Savings Rate
-- Transaction Count
-- Income Count
-- Expense Count
-- Average Expense
-- Budget Utilization
-- Highest Expense Category
-
-### Category Breakdown
-
-Displays spending distribution by category.
-
-Example:
-
-```text
-Food
-Transportation
-Housing
-Utilities
-Entertainment
-```
-
-### Monthly Trend
-
-Tracks:
-
-- Monthly Income
-- Monthly Expenses
-- Monthly Balance
-
-### Income vs Expense
-
-Visual comparison of total income against total expenses.
-
-### Charts
-
-The analytics page uses Recharts for:
-
-- Area Charts
-- Pie Charts
-- Bar Charts
-
----
-
-## Notifications
-
-Activity notification system.
-
-Notifications are generated automatically when important financial activity occurs.
-
-### Notification Features
-
-- Notification Center
-- Navbar Notification Dropdown
-- Unread Count
-- Mark All Read
-- Activity History
-- Notification Timestamps
-
-### Notification Data
-
-Notifications may include:
-
-- Transaction Type
-- Transaction Amount
-- Transaction Category
-- Creation Time
-
-### Examples
-
-```text
-Income Added
-Expense Recorded
-Transaction Updated
-```
-
----
-
-## Settings
-
-User preference management.
-
-Users can update account preferences without modifying authentication records.
-
-### Available Settings
-
-- First Name
-- Last Name
-- Currency Preference
-
-### Read-Only Information
-
-- Email Address
-
-### Supported Currencies
-
-```text
-USD
-GBP
-EUR
-NGN
-```
-
-Currency selection updates monetary displays throughout the application.
-
----
-
-# Authentication
-
-CashFlowr uses JSON Web Tokens for authentication.
-
-## Authentication Flow
-
-### Registration
-
-```http
-POST /api/auth/register
-```
-
-### Login
-
-```http
-POST /api/auth/login
-```
-
-### Current User
-
-```http
-GET /api/auth/me
-```
-
-Protected routes require a valid bearer token.
-
-Example:
-
-```http
-Authorization: Bearer <token>
-```
-
----
-
-# Password Security
-
-User passwords are never stored in plain text.
-
-Passwords are hashed using bcrypt before being saved to the database.
-
-Example:
-
-```js
-const hashedPassword = await bcrypt.hash(password, 10);
-```
-
-During login:
-
-```js
-await bcrypt.compare(password, user.password);
-```
-
-Only hashed values are stored in MongoDB.
-
----
-
-# User Data Isolation
-
-Every major resource is linked to the authenticated user.
-
-Resources include:
-
-- Transactions
-- Categories
-- Budgets
-- Notifications
-- Dashboard Data
-- Analytics Data
-- Settings
-
-Example query pattern:
-
-```js
-{
-  user: req.user._id
-}
-```
-
-This ensures users can only access their own financial information.
-
----
-
-# Currency System
-
-CashFlowr supports multiple display currencies.
-
-Supported currencies:
-
-```text
-USD
-GBP
-EUR
-NGN
-```
-
-Displayed symbols:
-
-```text
-USD → $
-GBP → £
-EUR → €
-NGN → ₦
-```
-
-Currency preferences automatically update:
-
-- Dashboard
-- Transactions
-- Budgets
-- Analytics
-- Notifications
-- Navbar Notification Dropdown
-
----
-
-# Theme System
-
-CashFlowr includes application-wide theme switching.
-
-Available themes:
-
-- Light
-- Dark
-
-Theme support includes:
-
-- Dashboard
-- Sidebar
-- Navbar
-- Cards
-- Modals
-- Inputs
-- Dropdowns
-- Notifications
-- Preloader
-
-Theme changes are applied throughout the entire application interface.
-
----
-
-# Notification Architecture
-
-Transaction activity automatically generates notification records.
-
-Example notification payload:
-
-```js
-{
-  user,
-  type,
-  title,
-  message,
-  metadata: {
-    transactionId,
-    amount,
-    transactionType,
-    categoryId,
-    categoryName
-  }
-}
-```
-
-Notification metadata is used by:
-
-- Notification Center
-- Navbar Dropdown
-- Activity Indicators
-
----
-
-# API Routes
-
-## Authentication
+### Authentication
 
 ```http
 POST /api/auth/register
 POST /api/auth/login
+POST /api/auth/logout
 GET  /api/auth/me
 ```
 
----
-
-## Users
-
-```http
-PUT /api/users/settings
-```
-
----
-
-## Transactions
+### Transactions
 
 ```http
 GET    /api/transactions
@@ -614,9 +133,9 @@ PUT    /api/transactions/:id
 DELETE /api/transactions/:id
 ```
 
----
+Transaction listing supports bounded query parameters including page, limit, search, type, category and date ranges. Create requests can provide an `Idempotency-Key` header. Version-sensitive mutations support `If-Match`.
 
-## Categories
+### Categories
 
 ```http
 GET    /api/categories
@@ -625,9 +144,9 @@ PUT    /api/categories/:id
 DELETE /api/categories/:id
 ```
 
----
+Categories cannot be removed or changed incompatibly while dependent financial records require them.
 
-## Budgets
+### Budgets
 
 ```http
 GET    /api/budgets
@@ -636,193 +155,161 @@ PUT    /api/budgets/:id
 DELETE /api/budgets/:id
 ```
 
----
+### Savings goals
 
-## Notifications
+```http
+GET    /api/goals
+POST   /api/goals
+PUT    /api/goals/:id
+POST   /api/goals/:id/contribute
+DELETE /api/goals/:id
+```
+
+### Recurring cash flow
+
+```http
+GET    /api/recurring
+POST   /api/recurring
+PUT    /api/recurring/:id
+POST   /api/recurring/:id/post
+DELETE /api/recurring/:id
+```
+
+### Notifications
 
 ```http
 GET   /api/notifications
 GET   /api/notifications/unread-count
+PATCH /api/notifications/:id/read
 PATCH /api/notifications/mark-all-read
 ```
 
----
-
-## Dashboard
+### Dashboard and analytics
 
 ```http
 GET /api/dashboard/summary
-```
-
----
-
-## Analytics
-
-```http
 GET /api/analytics/summary
 ```
 
----
+### User settings
 
-# Backend Structure
-
-```text
-server/
-├── config/
-│   └── db.js
-│
-├── controllers/
-│   ├── analyticsController.js
-│   ├── authController.js
-│   ├── budgetController.js
-│   ├── categoryController.js
-│   ├── dashboardController.js
-│   ├── notificationController.js
-│   ├── transactionController.js
-│   └── userController.js
-│
-├── middleware/
-│   └── authMiddleware.js
-│
-├── models/
-│   ├── Budget.js
-│   ├── Category.js
-│   ├── Notification.js
-│   ├── Transaction.js
-│   └── User.js
-│
-├── routes/
-│   ├── analyticsRoutes.js
-│   ├── authRoutes.js
-│   ├── budgetRoutes.js
-│   ├── categoryRoutes.js
-│   ├── dashboardRoutes.js
-│   ├── notificationRoutes.js
-│   ├── transactionRoutes.js
-│   └── userRoutes.js
-│
-├── utils/
-│   └── generateToken.js
-│
-└── server.js
+```http
+PUT /api/users/settings
 ```
 
----
+## Local development
 
-# Frontend Structure
+### Backend
 
-```text
-client/
-├── src/
-│
-├── components/
-├── context/
-├── hooks/
-├── layouts/
-├── pages/
-├── routes/
-├── services/
-├── utils/
-│
-└── App.jsx
+```bash
+cd server
+npm ci
+npm run dev
 ```
 
----
-
-# Environment Variables
-
-## Backend
+Backend environment:
 
 ```env
 PORT=5000
-MONGO_URI=your_mongodb_connection_string
-JWT_SECRET=your_jwt_secret
+MONGO_URI=mongodb_connection_string
+JWT_SECRET=strong_random_secret
 CLIENT_URL=http://localhost:5173
 ```
 
-## Frontend
+### Frontend
+
+```bash
+cd client
+npm ci
+npm run dev
+```
+
+Frontend environment:
 
 ```env
 VITE_API_URL=http://localhost:5000/api
 ```
 
----
+## Quality gates
 
-# Installation
+GitHub Actions validates both applications on feature branches, pull requests and `main`.
 
-## Clone Repository
-
-```bash
-git clone https://github.com/wbizmo/cashflowr.git
-cd cashflowr
-```
-
-## Backend Setup
+### API gate
 
 ```bash
-cd server
-npm install
-npm run dev
+npm ci
+npm audit --omit=dev --audit-level=high
+npm run check
+npm test
 ```
 
-## Frontend Setup
+### Frontend gate
 
 ```bash
-cd client
-npm install
-npm run dev
+npm ci
+npm audit --omit=dev --audit-level=high
+npm run lint
+npm run build
 ```
 
----
+A release should not be merged while either job is red.
 
-# Deployment
+## Deployment
 
-Recommended deployment configuration:
+Production uses the repository's existing automatic deployments:
 
-```text
-Frontend → Vercel
-Backend → Render
-Database → MongoDB Atlas
-```
+- **Frontend:** Vercel, `main`
+- **Backend:** Render, `main`, root directory `server`
+- **Database:** MongoDB
 
-Frontend production environment variable:
+The frontend production API URL is:
 
 ```env
 VITE_API_URL=https://cashflowr-api-81rd.onrender.com/api
 ```
 
-Backend production environment variable:
+The backend allowed frontend origin is:
 
 ```env
 CLIENT_URL=https://cashflowr-orpin.vercel.app
 ```
 
----
+The Render API is hosted on a free service tier and may cold-start after inactivity.
 
-# Screenshots
-
-Recommended screenshots for documentation:
+## Repository layout
 
 ```text
-Landing Page
-Dashboard
-Transactions
-Categories
-Budgets
-Analytics
-Notifications
-Settings
-Mobile Dashboard
+cashflowr/
+├── .github/workflows/ci.yml
+├── client/
+│   └── src/
+│       ├── components/
+│       ├── config/
+│       ├── context/
+│       ├── hooks/
+│       ├── layouts/
+│       ├── pages/
+│       ├── routes/
+│       ├── services/
+│       ├── styles/
+│       └── utils/
+├── server/
+│   ├── config/
+│   ├── controllers/
+│   ├── middleware/
+│   ├── models/
+│   ├── routes/
+│   ├── tests/
+│   ├── utils/
+│   ├── app.js
+│   └── server.js
+└── CHANGELOG.md
 ```
 
----
-
-# License
+## License
 
 MIT
 
----
-
-# Author
+## Author
 
 Ashibuogwu Williams

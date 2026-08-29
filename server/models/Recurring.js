@@ -5,7 +5,7 @@ const roundMoney = (value) => {
   return Number.isFinite(number) ? Math.round((number + Number.EPSILON) * 100) / 100 : value;
 };
 
-const transactionSchema = new mongoose.Schema(
+const recurringSchema = new mongoose.Schema(
   {
     user: {
       type: mongoose.Schema.Types.ObjectId,
@@ -36,35 +36,40 @@ const transactionSchema = new mongoose.Schema(
       ref: "Category",
       required: true,
     },
+    frequency: {
+      type: String,
+      enum: ["weekly", "monthly", "quarterly", "yearly"],
+      required: true,
+    },
+    nextDueDate: {
+      type: Date,
+      required: true,
+    },
+    endDate: {
+      type: Date,
+      default: null,
+    },
     description: {
       type: String,
       default: "",
       trim: true,
       maxlength: 1000,
     },
-    date: {
-      type: Date,
-      default: Date.now,
-      required: true,
-    },
-    idempotencyKey: {
+    status: {
       type: String,
-      trim: true,
-      maxlength: 128,
-      select: false,
+      enum: ["active", "paused", "completed"],
+      default: "active",
+    },
+    lastPostedAt: {
+      type: Date,
+      default: null,
     },
   },
   { timestamps: true, optimisticConcurrency: true }
 );
 
-transactionSchema.index({ user: 1, date: -1, _id: -1 });
-transactionSchema.index({ user: 1, type: 1, date: -1 });
-transactionSchema.index({ user: 1, category: 1, date: -1 });
-transactionSchema.index(
-  { user: 1, idempotencyKey: 1 },
-  { unique: true, partialFilterExpression: { idempotencyKey: { $type: "string" } } }
-);
+recurringSchema.index({ user: 1, status: 1, nextDueDate: 1 });
+recurringSchema.index({ user: 1, createdAt: -1 });
 
-const Transaction = mongoose.model("Transaction", transactionSchema);
-
-export default Transaction;
+const Recurring = mongoose.model("Recurring", recurringSchema);
+export default Recurring;
