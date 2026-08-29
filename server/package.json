@@ -5,7 +5,9 @@
   "main": "server.js",
   "scripts": {
     "dev": "nodemon server.js",
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node --test",
+    "check": "node --check app.js && node --check server.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",
