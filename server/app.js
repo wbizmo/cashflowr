@@ -24,17 +24,26 @@ const app = express();
 app.disable("x-powered-by");
 app.set("trust proxy", 1);
 
-const allowedOrigins = (process.env.CLIENT_URL || "")
+const configuredOrigins = (process.env.CLIENT_URL || "")
   .split(",")
   .map((origin) => origin.trim())
   .filter(Boolean);
+
+const allowedOrigins = new Set(
+  configuredOrigins.length > 0
+    ? configuredOrigins
+    : process.env.NODE_ENV === "production"
+      ? []
+      : ["http://localhost:3000", "http://localhost:5173"]
+);
 
 app.use(requestContext);
 app.use(securityHeaders);
 app.use(
   cors({
     origin(origin, callback) {
-      if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+      // Non-browser/server-to-server clients normally send no Origin header.
+      if (!origin || allowedOrigins.has(origin)) {
         return callback(null, true);
       }
       return callback(Object.assign(new Error("Origin not allowed by CORS"), { statusCode: 403 }));
